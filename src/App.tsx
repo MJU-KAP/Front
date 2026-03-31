@@ -1,6 +1,7 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { useState } from 'react';
 import ProtectedRoute from './components/ProtectedRoute';
+import MainPage from './pages/main';
 
 // 임시 페이지 컴포넌트들
 const Login = () => <div className="p-20 text-center">🔑 로그인 페이지</div>;
@@ -13,6 +14,8 @@ function App() {
     <BrowserRouter>
       <Routes>
         {/* --- 공개 페이지  --- */}
+        <Route path="/" element={<MainPage />} />
+        <Route path="/main" element={<MainPage />} />
         <Route path="/login" element={<Login />} />
 
         {/* --- 보호된 페이지 --- */}
