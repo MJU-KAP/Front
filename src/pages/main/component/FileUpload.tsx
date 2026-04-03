@@ -1,11 +1,13 @@
 import { useState, useRef, useCallback } from 'react';
 import Toast from '../../../components/Toast';
+import { useAuthStore } from '../../../store/authStore';
 
 // 파일 업로드 최대 크기 100mb
 const MAX_FILE_SIZE = 100 * 1024 * 1024;
 
 export default function FileUpload() {
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const isLoggedIn = useAuthStore((state) => state.isLoggedIn);
+  
   const [isDrag, setIsDrag] = useState(false);
   const [files, setFiles] = useState<File[]>([]);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -45,7 +47,6 @@ export default function FileUpload() {
     setFiles((prev) => [...prev, ...validFiles]);
   }, [isLoggedIn, triggerToast]);
 
-  // 개별 파일 삭제 로직
   const handleRemoveFile = useCallback((indexToRemove: number) => {
     setFiles((prev) => prev.filter((_, index) => index !== indexToRemove));
   }, []);
@@ -57,7 +58,6 @@ export default function FileUpload() {
     }
   }, [isLoggedIn, triggerToast]);
 
-  // 드래그 앤 드롭 이벤트 핸들러
   const handleDragOver = useCallback((e: React.DragEvent) => {
     e.preventDefault();
     setIsDrag(true);
@@ -75,7 +75,6 @@ export default function FileUpload() {
     }
   }, [onFileChange]);
 
-  // Input 변경 핸들러 분리 및 버그 방지 (동일 파일 재업로드)
   const handleInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     onFileChange(e.target.files);
     if (e.target) {
@@ -85,14 +84,6 @@ export default function FileUpload() {
 
   return (
     <div className="w-full max-w-4xl mx-auto p-4 space-y-6">
-      <div className="flex justify-end">
-        <button 
-          onClick={() => setIsLoggedIn((prev) => !prev)}
-          className={`px-3 py-1 rounded-full text-[10px] border ${isLoggedIn ? 'border-green-500 text-green-500' : 'border-zinc-700 text-zinc-500'}`}
-        >
-          {isLoggedIn ? 'LOGIN ON' : 'LOGIN OFF'}
-        </button>
-      </div>
 
       <div
         onDragOver={handleDragOver}

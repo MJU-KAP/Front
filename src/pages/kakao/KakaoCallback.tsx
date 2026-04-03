@@ -1,8 +1,11 @@
 import { useEffect } from 'react';
 // import { useNavigate } from 'react-router-dom';
+import { useAuthStore } from '../../store/authStore';
 
 export default function KakaoCallback() {
   // const navigate = useNavigate();
+
+  const login = useAuthStore((state) => state.login);
 
   useEffect(() => {
     const code = new URL(window.location.href).searchParams.get('code');
@@ -10,13 +13,18 @@ export default function KakaoCallback() {
     if (code) {
       console.log('카카오 인가 코드 획득 완료:', code);
       
-      // 추후 api 연동 자리
-      // 현재는 임시로 1.5초 뒤에 메인 페이지로 돌려보냅니다.
+      // 추후 api 연동 자리:
+      // api.post('/api/auth/kakao', { code }).then(res => login(res.data.accessToken)) ...
+      
+      // 백엔드 연동 전이라 가짜 토큰을 넣어 강제로 로그인 상태로 만듭니다.
+      const dummyToken = 'kakao-temp-token-12345';
+      login(dummyToken);
+
       setTimeout(() => {
         window.location.href = '/'; 
       }, 1500);
     }
-  }, []);
+  }, [login]);
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-zinc-950 text-white">
