@@ -1,5 +1,6 @@
 import { motion, type Variants } from 'framer-motion';
 import FileUpload from "./component/FileUpload";
+import KakaoLoginButton from '../kakao/component/KakaoLoginButton';
 
 export default function MainPage() {
   // 공통 텍스트 애니메이션
@@ -28,7 +29,12 @@ export default function MainPage() {
   };
 
   return (
-    <div className="min-h-screen bg-white text-zinc-900 w-full overflow-x-hidden">
+    <div className="min-h-screen bg-white text-zinc-900 w-full overflow-x-hidden relative">
+
+      {/* 헤더 영역: 카카오 로그인 버튼 */}
+      <header className="absolute top-0 left-0 w-full p-6 flex justify-end z-50">
+        <KakaoLoginButton />
+      </header>
 
       <section className="bg-zinc-950 text-white min-h-[90vh] py-24 px-6 flex flex-col items-center justify-center text-center w-full">
 
@@ -36,7 +42,7 @@ export default function MainPage() {
           variants={fadeUpItem}
           initial="hidden"
           whileInView="visible"
-          viewport={{ once: false, amount: 0.5 }} // 절반쯤 보일 때 켜짐
+          viewport={{ once: false, amount: 0.5 }}
           className="px-5 py-1.5 bg-orange-500 text-[16px] font-bold rounded-full mb-8 tracking-widest uppercase"
         >
           조조이백배 프로젝트
@@ -98,7 +104,7 @@ export default function MainPage() {
             {['🎯 AI 역량 분석', '🧩 맞춤형 추천', '🧱 테트리스 시각화'].map((text, index) => (
               <motion.div 
                 key={text}
-                custom={index} // 딜레이 계산
+                custom={index}
                 variants={smoothCardItem}
                 initial="hidden"
                 whileInView="visible"
@@ -112,7 +118,6 @@ export default function MainPage() {
         </div>
       </section>
 
-      {/* Footer */}
       <footer className="bg-zinc-950 text-zinc-600 py-20 px-10 w-full flex justify-center border-t border-zinc-900">
         <div className="max-w-6xl w-full flex flex-col md:flex-row justify-between items-center md:items-end gap-10 text-center md:text-left">
           <div>
