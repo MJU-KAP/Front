@@ -8,20 +8,19 @@ interface AuthState {
 }
 
 export const useAuthStore = create<AuthState>((set) => ({
-  isLoggedIn: false,
-
+  isLoggedIn: !!localStorage.getItem('accessToken'), 
+  
   login: (token) => {
     localStorage.setItem('accessToken', token);
     set({ isLoggedIn: true });
   },
-
+  
   logout: () => {
     localStorage.removeItem('accessToken');
     localStorage.removeItem('refreshToken');
     set({ isLoggedIn: false });
-    window.location.href = '/'; 
   },
-
+  
   checkAuth: () => {
     const token = localStorage.getItem('accessToken');
     set({ isLoggedIn: !!token });
