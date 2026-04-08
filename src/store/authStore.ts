@@ -10,7 +10,7 @@ interface AuthState {
 export const useAuthStore = create<AuthState>((set) => ({
   isLoggedIn: false,
 
-  login: (token) => {
+  login: (token: string) => {
     localStorage.setItem('accessToken', token);
     set({ isLoggedIn: true });
   },
