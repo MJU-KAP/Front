@@ -27,6 +27,7 @@ function App() {
         <Route path="/" element={<MainPage />} />
         <Route path="/main" element={<MainPage />} />
         <Route path="/login" element={<Login />} />
+        <Route path="/auth/kakao/callback" element={<KakaoCallback />} />
         
         {/* 카카오 로그인 완료 후 돌아올 콜백 라우트 추가 */}
         <Route path="/auth/kakao/callback" element={<KakaoCallback />} />
@@ -34,8 +35,8 @@ function App() {
         {/* --- 보호된 페이지 --- */}
         <Route element={<ProtectedRoute isAuthenticated={isLoggedIn} />}>
           <Route path="/mypage" element={<MyPage />} />
-          <Route path="/result" element={<ResultPage />} />
           <Route path="/result/:id" element={<ResultPage />} />
+          <Route path="/result" element={<Navigate to="/" replace />} />
         </Route>
 
         {/* --- 예외 처리 --- */}

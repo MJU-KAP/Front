@@ -1,37 +1,56 @@
-"use client";
 import { motion } from "framer-motion";
+import type { Skill } from "../type";
 
-export default function SkillCanvas() {
+interface SkillCanvasProps {
+  skills: Skill[];
+  hoveredSkill: string | null;
+  setHoveredSkill: (skill: string | null) => void;
+}
+
+export default function SkillCanvas({ skills, hoveredSkill, setHoveredSkill }: SkillCanvasProps) {
   return (
     <div className="bg-zinc-900 rounded-3xl p-6 shadow-lg border border-zinc-800 w-full overflow-hidden">
-      <div className="flex flex-col gap-3">
-        {/* 1번째 줄 */}
-        <div className="flex gap-3 h-20">
-          <motion.div initial={{ y: -20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} className="flex-grow bg-orange-500 rounded-xl flex items-center justify-center font-bold text-zinc-900">React</motion.div>
-          <motion.div initial={{ y: -20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.1 }} className="w-32 bg-emerald-400 rounded-xl flex items-center justify-center font-bold text-zinc-900">CSS</motion.div>
-          <motion.div initial={{ y: -20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.2 }} className="w-16 bg-zinc-100 rounded-xl"></motion.div>
-        </div>
-        
-        {/* 2번째 줄 */}
-        <div className="flex gap-3 h-20">
-          <motion.div initial={{ x: -20, opacity: 0 }} animate={{ x: 0, opacity: 1 }} transition={{ delay: 0.3 }} className="w-40 bg-orange-500 rounded-xl flex items-center justify-center font-bold text-zinc-900">TypeScript</motion.div>
-          <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} transition={{ delay: 0.4 }} className="flex-grow bg-emerald-400 rounded-xl flex items-center justify-center font-bold text-zinc-900">Next.js</motion.div>
-          <motion.div initial={{ x: 20, opacity: 0 }} animate={{ x: 0, opacity: 1 }} transition={{ delay: 0.5 }} className="w-24 bg-orange-500 rounded-xl flex items-center justify-center font-bold text-zinc-900">Git</motion.div>
-        </div>
+      <div className="flex flex-wrap gap-3">
+        {skills.map((skill, index) => {
+          const flexBasis = 
+            skill.score >= 80 ? "calc(45% - 12px)" : 
+            skill.score >= 60 ? "calc(30% - 12px)" : 
+            "calc(20% - 12px)";
 
-        {/* 3번째 줄 */}
-        <div className="flex gap-3 h-20">
-          <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.6 }} className="flex-1 bg-emerald-400 rounded-xl flex items-center justify-center font-bold text-zinc-900">Node.js</motion.div>
-          <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.7 }} className="flex-1 bg-orange-500 rounded-xl flex items-center justify-center font-bold text-zinc-900">REST API</motion.div>
-          <motion.div className="w-24 bg-zinc-800 rounded-xl"></motion.div>
-        </div>
+          // ✅ 현재 마우스가 올라간 스킬인지, 아니면 다른 스킬이 선택되어 흐려져야 하는지 계산
+          const isHovered = hoveredSkill === skill.name;
+          const isDimmed = hoveredSkill !== null && hoveredSkill !== skill.name;
 
-        {/* 4번째 줄 (비어있는/부족한 블록) */}
-        <div className="flex gap-3 h-20">
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.8 }} className="w-24 bg-zinc-200 text-zinc-400 rounded-xl flex items-center justify-center font-bold">Testing</motion.div>
-          <motion.div className="flex-1 border-2 border-dashed border-zinc-700 rounded-xl"></motion.div>
-          <motion.div className="flex-1 border-2 border-dashed border-zinc-700 rounded-xl"></motion.div>
-        </div>
+          return (
+            <motion.div
+              key={skill.name}
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              transition={{ delay: index * 0.1 }}
+              onMouseEnter={() => setHoveredSkill(skill.name)} // 마우스 올릴 때
+              onMouseLeave={() => setHoveredSkill(null)}       // 마우스 뗄 때
+              style={{ flexBasis, flexGrow: 1 }}
+              className={`h-20 rounded-xl flex items-center justify-center font-bold transition-all duration-300 cursor-pointer
+                ${
+                  skill.isLacking
+                    ? "bg-zinc-800 text-zinc-500 border-2 border-dashed border-zinc-700" 
+                    : `${skill.color} text-zinc-900`
+                }
+                ${isHovered ? "ring-4 ring-white shadow-[0_0_15px_rgba(255,255,255,0.3)] scale-[1.02]" : ""}
+                ${isDimmed ? "opacity-30 grayscale-50" : "opacity-100"}
+              `}
+            >
+              {skill.name}
+            </motion.div>
+          );
+        })}
+
+        <motion.div 
+          initial={{ opacity: 0 }} 
+          animate={{ opacity: 1 }} 
+          transition={{ delay: skills.length * 0.1 }}
+          className="flex-1 h-20 border-2 border-dashed border-zinc-800 rounded-xl min-w-[100px]"
+        />
       </div>
     </div>
   );

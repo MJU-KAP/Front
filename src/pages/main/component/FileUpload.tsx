@@ -1,12 +1,13 @@
 import { useState, useRef, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import Toast from '../../../components/Toast';
 import { useAuthStore } from '../../../store/authStore';
 
-// 파일 업로드 최대 크기 100mb
 const MAX_FILE_SIZE = 100 * 1024 * 1024;
 
 export default function FileUpload() {
   const isLoggedIn = useAuthStore((state) => state.isLoggedIn);
+  const navigate = useNavigate();
   
   const [isDrag, setIsDrag] = useState(false);
   const [files, setFiles] = useState<File[]>([]);
@@ -56,7 +57,11 @@ export default function FileUpload() {
       triggerToast('로그인 필요', '로그인 후 분석 기능을 이용할 수 있습니다.', '🔒');
       return;
     }
-  }, [isLoggedIn, triggerToast]);
+    
+    // 예시: 분석 아이디 123으로 이동 처리
+    const mockAnalysisId = "123";
+    navigate(`/result/${mockAnalysisId}`);
+  }, [isLoggedIn, triggerToast, navigate]);
 
   const handleDragOver = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -84,7 +89,6 @@ export default function FileUpload() {
 
   return (
     <div className="w-full max-w-4xl mx-auto p-4 space-y-6">
-
       <div
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
