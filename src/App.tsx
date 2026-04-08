@@ -4,6 +4,7 @@ import ProtectedRoute from './components/ProtectedRoute';
 import MainPage from './pages/main';
 import { useAuthStore } from './store/authStore';
 import KakaoCallback from './pages/kakao/KakaoCallback';
+import ResultPage from './pages/result/index';
 
 // 임시 페이지 컴포넌트들
 const Login = () => <div className="p-20 text-center">🔑 로그인 페이지</div>;
@@ -33,6 +34,8 @@ function App() {
         {/* --- 보호된 페이지 --- */}
         <Route element={<ProtectedRoute isAuthenticated={isLoggedIn} />}>
           <Route path="/mypage" element={<MyPage />} />
+          <Route path="/result" element={<ResultPage />} />
+          <Route path="/result/:id" element={<ResultPage />} />
         </Route>
 
         {/* --- 예외 처리 --- */}
