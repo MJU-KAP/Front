@@ -1,10 +1,8 @@
 name: Frontend Deploy (S3 + CloudFront)
-
 on:
   push:
     branches:
-      - main  # main 브랜치에 코드가 push될 때 작동
-
+      - main
 jobs:
   deploy:
     runs-on: ubuntu-latest
@@ -12,10 +10,15 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v3
 
-      - name: Install dependencies & Build
-        run: |
-          npm install
-          npm run build
+      - name: Install dependencies
+        run: npm install
+
+      - name: Build  # ← env 포함해서 한 번만 빌드
+        run: npm run build
+        env:
+          VITE_KAKAO_REST_API_KEY: ${{ secrets.VITE_KAKAO_REST_API_KEY }}
+          VITE_KAKAO_REDIRECT_URI: ${{ secrets.VITE_KAKAO_REDIRECT_URI }}
+          VITE_API_BASE_URL: ${{ secrets.VITE_API_BASE_URL }}
 
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v1
@@ -25,15 +28,9 @@ jobs:
           aws-region: ap-northeast-2
 
       - name: Deploy to S3
-        run: |
-          aws s3 sync ./dist s3://${{ secrets.AWS_S3_BUCKET }} --delete
+        run: aws s3 sync ./dist s3://${{ secrets.AWS_S3_BUCKET }} --delete
 
       - name: CloudFront Invalidation
-        run: |
-          aws cloudfront create-invalidation --distribution-id ${{ secrets.CLOUDFRONT_DISTRIBUTION_ID }} --paths "/*"
-      - name: Build
-        run: npm run build
-        env:
-          VITE_KAKAO_REST_API_KEY: ${{ secrets.VITE_KAKAO_REST_API_KEY }}
-          VITE_KAKAO_REDIRECT_URI: ${{ secrets.VITE_KAKAO_REDIRECT_URI }}
-          VITE_API_BASE_URL: ${{ secrets.VITE_API_BASE_URL }}
+        run: aws cloudfront create-invalidation \
+          --distribution-id ${{ secrets.CLOUDFRONT_DISTRIBUTION_ID }} \
+          --paths "/*"
