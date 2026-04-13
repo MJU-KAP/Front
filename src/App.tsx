@@ -4,6 +4,7 @@ import ProtectedRoute from './components/ProtectedRoute';
 import MainPage from './pages/main';
 import { useAuthStore } from './store/authStore';
 import KakaoCallback from './pages/kakao/KakaoCallback';
+import ResultPage from './pages/result/index';
 
 // 임시 페이지 컴포넌트들
 const Login = () => <div className="p-20 text-center">🔑 로그인 페이지</div>;
@@ -26,6 +27,7 @@ function App() {
         <Route path="/" element={<MainPage />} />
         <Route path="/main" element={<MainPage />} />
         <Route path="/login" element={<Login />} />
+        <Route path="/auth/kakao/callback" element={<KakaoCallback />} />
         
         {/* 카카오 로그인 완료 후 돌아올 콜백 라우트 추가 */}
         <Route path="/auth/kakao/callback" element={<KakaoCallback />} />
@@ -33,6 +35,8 @@ function App() {
         {/* --- 보호된 페이지 --- */}
         <Route element={<ProtectedRoute isAuthenticated={isLoggedIn} />}>
           <Route path="/mypage" element={<MyPage />} />
+          <Route path="/result/:id" element={<ResultPage />} />
+          <Route path="/result" element={<Navigate to="/" replace />} />
         </Route>
 
         {/* --- 예외 처리 --- */}
