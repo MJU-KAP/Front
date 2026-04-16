@@ -5,7 +5,7 @@ import { useAuthStore } from '../../store/authStore';
 export default function KakaoCallback() {
   // const navigate = useNavigate();
 
-  const login = useAuthStore((state) => state.login);
+  const { login } = useAuthStore();
 
   useEffect(() => {
     const code = new URL(window.location.href).searchParams.get('code');
