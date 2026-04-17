@@ -5,9 +5,11 @@ interface Props {
   plans: ActionPlan[];
   insight: string;
   hoveredSkill: string | null;
+  hoveredPlan: number | null;
+  setHoveredPlan: (id: number | null) => void;
 }
 
-export default function ActionPlanSidebar({ plans, insight, hoveredSkill }: Props) {
+export default function ActionPlanSidebar({ plans, insight, hoveredSkill, hoveredPlan, setHoveredPlan }: Props) {
   return (
     <div className="bg-white rounded-3xl p-8 border border-zinc-200 shadow-sm sticky top-8 transition-all">
       <div className="mb-6">
@@ -16,24 +18,24 @@ export default function ActionPlanSidebar({ plans, insight, hoveredSkill }: Prop
       </div>
 
       <div className="flex flex-col gap-4 mb-8">
-        {plans.map((plan, i) => {
-          // ✅ 현재 마우스가 올라간 스킬 이름이 액션 플랜의 '목표 스킬(skillTarget)'이나 '제목', '내용'에 포함되어 있는지 검사
-          const isRelated = hoveredSkill && (
-            plan.skillTarget.includes(hoveredSkill) || 
-            plan.title.includes(hoveredSkill) || 
-            plan.desc.includes(hoveredSkill)
-          );
-          const isDimmed = hoveredSkill !== null && !isRelated;
+        {plans.map((plan) => {
+          const isRelated = hoveredSkill 
+            ? (plan.skillTarget.includes(hoveredSkill) || plan.title.includes(hoveredSkill) || plan.desc.includes(hoveredSkill))
+            : hoveredPlan === plan.id;
+            
+          const isDimmed = (hoveredSkill !== null && !isRelated) || (hoveredPlan !== null && !isRelated);
 
           return (
             <motion.div 
               key={plan.id}
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: 0.8 + (i * 0.1) }}
-              className={`p-5 rounded-2xl border transition-all duration-300
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.3 }}
+              onMouseEnter={() => setHoveredPlan(plan.id)}
+              onMouseLeave={() => setHoveredPlan(null)}
+              className={`p-5 rounded-2xl border transition-all duration-150 cursor-pointer
                 ${isRelated ? "bg-orange-50 border-orange-400 shadow-md scale-[1.02]" : "bg-zinc-50 border-zinc-100 hover:border-orange-200"}
-                ${isDimmed ? "opacity-40" : "opacity-100"}
+                ${isDimmed ? "opacity-30" : "opacity-100"}
               `}
             >
               <div className="flex items-center gap-2 mb-3">

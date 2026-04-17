@@ -8,16 +8,14 @@ import SkillSummary from "./component/SkillSummary";
 import SkillProgress from "./component/SkillProgress";
 import ActionPlanSidebar from "./component/ActionPlanSidebar";
 
-// 목업 데이터 가져오는 함수 (이전과 동일하므로 생략하지 않고 그대로 두시면 됩니다)
 const getMockData = (id: string): AnalysisData => ({
-  // ... (기존과 동일)
   id: id,
   fileName: `이력서_분석결과_${id}.pdf`,
   jobFamily: `프론트엔드 개발자 분석 결과 (ID: ${id})`,
   totalOwned: 8,
   totalLacking: 3,
   totalScore: 72,
-  insight: "테스팅 역량이 가장 부족합니다. 공모전 참여 시 데이터 시각화 블록이 30% 강화될 수 있습니다.",
+  insight: "테스팅 역량이 가장 부족합니다. 공모전 참여 시 테스팅 블록이 30% 강화될 수 있습니다.",
   skills: [
     { name: "React", score: 85, color: "bg-orange-500" },
     { name: "TypeScript", score: 78, color: "bg-orange-500" },
@@ -51,9 +49,9 @@ const getMockData = (id: string): AnalysisData => ({
 export default function ResultPage() {
   const { id } = useParams<{ id: string }>();
   const [data, setData] = useState<AnalysisData | null>(null);
-  
-  // ✅ 마우스가 올라간 스킬 이름을 저장하는 상태 추가
+
   const [hoveredSkill, setHoveredSkill] = useState<string | null>(null);
+  const [hoveredPlan, setHoveredPlan] = useState<number | null>(null);
 
   useEffect(() => {
     if (!id) return;
@@ -73,6 +71,17 @@ export default function ResultPage() {
   if (!id) return <Navigate to="/" replace />;
   if (!data) return <div className="min-h-screen bg-zinc-50 flex justify-center items-center">분석 결과를 불러오는 중입니다...</div>;
 
+  let hoveredPlanData = null;
+  if (hoveredPlan !== null) {
+    const activePlan = data.actionPlans.find(p => p.id === hoveredPlan);
+    if (activePlan) {
+      const match = activePlan.skillTarget.match(/([a-zA-Z0-9.]+)\s*\+(\d+)%/);
+      if (match) {
+        hoveredPlanData = { skill: match[1].trim(), amount: parseInt(match[2], 10) };
+      }
+    }
+  }
+
   return (
     <div className="min-h-screen bg-zinc-50 text-zinc-900 w-full overflow-x-hidden">
       <ResultHeader fileName={data.fileName} />
@@ -84,16 +93,17 @@ export default function ResultPage() {
             <p className="text-zinc-500 text-sm">{data.jobFamily}</p>
           </div>
 
-          {/* ✅ props로 hoveredSkill과 setHoveredSkill을 내려줍니다 */}
           <SkillCanvas 
             skills={data.skills} 
             hoveredSkill={hoveredSkill} 
             setHoveredSkill={setHoveredSkill} 
+            hoveredPlanData={hoveredPlanData}
           />
           <SkillSummary owned={data.totalOwned} lacking={data.totalLacking} score={data.totalScore} />
           <SkillProgress 
             skills={data.skills} 
             hoveredSkill={hoveredSkill} 
+            hoveredPlanData={hoveredPlanData}
           />
         </section>
 
@@ -102,6 +112,8 @@ export default function ResultPage() {
             plans={data.actionPlans} 
             insight={data.insight} 
             hoveredSkill={hoveredSkill} 
+            hoveredPlan={hoveredPlan}
+            setHoveredPlan={setHoveredPlan}
           />
         </section>
       </main>
