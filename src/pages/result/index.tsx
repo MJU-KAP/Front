@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { useParams, Navigate } from "react-router-dom"; 
 import type { AnalysisData } from "./type";
 
@@ -17,12 +17,13 @@ const getMockData = (id: string): AnalysisData => ({
   totalScore: 72,
   insight: "테스팅 역량이 가장 부족합니다. 공모전 참여 시 테스팅 블록이 30% 강화될 수 있습니다.",
   skills: [
-    { name: "React", score: 85, color: "bg-orange-500" },
+    // 타입 에러 해결을 위해 color 속성 추가
+    { name: "React", score: 85, color: "bg-emerald-500" },
     { name: "TypeScript", score: 78, color: "bg-orange-500" },
-    { name: "CSS", score: 65, color: "bg-emerald-400" },
+    { name: "CSS", score: 65, color: "bg-emerald-500" },
     { name: "Git", score: 98, color: "bg-orange-500" },
-    { name: "Next.js", score: 45, color: "bg-emerald-400" },
-    { name: "Testing", score: 38, color: "bg-red-400", isLacking: true },
+    { name: "Next.js", score: 45, color: "bg-emerald-500" },
+    { name: "Testing", score: 38, color: "bg-orange-500", isLacking: true },
   ],
   actionPlans: [
     {
@@ -68,19 +69,21 @@ export default function ResultPage() {
     return () => { isMounted = false; };
   }, [id]);
 
-  if (!id) return <Navigate to="/" replace />;
-  if (!data) return <div className="min-h-screen bg-zinc-50 flex justify-center items-center">분석 결과를 불러오는 중입니다...</div>;
-
-  let hoveredPlanData = null;
-  if (hoveredPlan !== null) {
+  const hoveredPlanData = useMemo(() => {
+    if (hoveredPlan === null || !data) return null;
+    
     const activePlan = data.actionPlans.find(p => p.id === hoveredPlan);
     if (activePlan) {
       const match = activePlan.skillTarget.match(/([a-zA-Z0-9.]+)\s*\+(\d+)%/);
       if (match) {
-        hoveredPlanData = { skill: match[1].trim(), amount: parseInt(match[2], 10) };
+        return { skill: match[1].trim(), amount: parseInt(match[2], 10) };
       }
     }
-  }
+    return null;
+  }, [hoveredPlan, data]);
+
+  if (!id) return <Navigate to="/" replace />;
+  if (!data) return <div className="min-h-screen bg-zinc-50 flex justify-center items-center">분석 결과를 불러오는 중입니다...</div>;
 
   return (
     <div className="min-h-screen bg-zinc-50 text-zinc-900 w-full overflow-x-hidden">
