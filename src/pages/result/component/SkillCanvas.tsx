@@ -1,56 +1,141 @@
-import { motion } from "framer-motion";
+import { useMemo } from "react";
 import type { Skill } from "../type";
 
 interface SkillCanvasProps {
   skills: Skill[];
   hoveredSkill: string | null;
   setHoveredSkill: (skill: string | null) => void;
+  hoveredPlanData: { skill: string, amount: number } | null;
 }
 
-export default function SkillCanvas({ skills, hoveredSkill, setHoveredSkill }: SkillCanvasProps) {
+interface SkillChunk {
+  id: string;
+  name?: string;
+  take: number;
+  baseColor?: string;
+  isHovered?: boolean;
+  isDimmed?: boolean;
+  isBonus?: boolean;
+  bonusAmount?: number;
+  isFirstPart?: boolean;
+  isLastPart?: boolean;
+  originalSkill?: string;
+  isLongestPart?: boolean;
+  isDummy?: boolean;
+}
+
+export default function SkillCanvas({ skills, hoveredSkill, setHoveredSkill, hoveredPlanData }: SkillCanvasProps) {
+  
+  const chunks = useMemo(() => {
+    const result: SkillChunk[] = [];
+    let currentWidth = 0;
+
+    skills.forEach((skill, index) => {
+      const isBonus = hoveredPlanData?.skill === skill.name;
+      const bonusAmount = isBonus ? hoveredPlanData.amount : 0;
+      const displayScore = Math.min(100, skill.score + bonusAmount);
+
+      const isHovered = hoveredSkill === skill.name || isBonus;
+      const isDimmed = (hoveredSkill !== null && hoveredSkill !== skill.name) || 
+                       (hoveredPlanData !== null && !isBonus);
+                       
+      const baseColor = index % 2 === 0 ? "bg-emerald-500" : "bg-orange-500";
+
+      let remaining = displayScore;
+      let partIndex = 0;
+
+      while (remaining > 0) {
+        const available = 100 - currentWidth;
+        const take = Math.min(remaining, available);
+
+        result.push({
+          id: `${skill.name}-${partIndex}`,
+          name: skill.name,
+          take,
+          baseColor,
+          isHovered,
+          isDimmed,
+          isBonus,
+          bonusAmount,
+          isFirstPart: partIndex === 0,
+          isLastPart: remaining === take,
+          originalSkill: skill.name,
+          isLongestPart: false 
+        });
+
+        remaining -= take;
+        currentWidth += take;
+        
+        if (currentWidth >= 100) currentWidth = 0;
+        partIndex++;
+      }
+    });
+
+    skills.forEach(skill => {
+      const skillChunks = result.filter(c => c.originalSkill === skill.name);
+      if (skillChunks.length > 0) {
+        let maxChunk = skillChunks[0];
+        for (let i = 1; i < skillChunks.length; i++) {
+          if (skillChunks[i].take > maxChunk.take) maxChunk = skillChunks[i];
+        }
+        maxChunk.isLongestPart = true;
+      }
+    });
+
+    if (currentWidth > 0 && currentWidth < 100) {
+      result.push({ id: 'dummy', isDummy: true, take: 100 - currentWidth });
+    }
+
+    return result;
+  }, [skills, hoveredSkill, hoveredPlanData]);
+
   return (
     <div className="bg-zinc-900 rounded-3xl p-6 shadow-lg border border-zinc-800 w-full overflow-hidden">
-      <div className="flex flex-wrap gap-3">
-        {skills.map((skill, index) => {
-          const flexBasis = 
-            skill.score >= 80 ? "calc(45% - 12px)" : 
-            skill.score >= 60 ? "calc(30% - 12px)" : 
-            "calc(20% - 12px)";
+      <div className="flex flex-wrap w-full -mx-1 -my-1">
+        {chunks.map((chunk) => {
+          if (chunk.isDummy) {
+            return (
+              <div 
+                key={chunk.id}
+                style={{ width: `${chunk.take}%` }}
+                className="px-1 py-1 box-border flex-shrink-0"
+              />
+            );
+          }
 
-          // ✅ 현재 마우스가 올라간 스킬인지, 아니면 다른 스킬이 선택되어 흐려져야 하는지 계산
-          const isHovered = hoveredSkill === skill.name;
-          const isDimmed = hoveredSkill !== null && hoveredSkill !== skill.name;
+          let roundedClass = "rounded-xl";
+          if (!chunk.isFirstPart && !chunk.isLastPart) roundedClass = "rounded-sm";
+          else if (!chunk.isFirstPart) roundedClass = "rounded-l-sm rounded-r-xl";
+          else if (!chunk.isLastPart) roundedClass = "rounded-l-xl rounded-r-sm";
 
           return (
-            <motion.div
-              key={skill.name}
-              initial={{ scale: 0.9, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              transition={{ delay: index * 0.1 }}
-              onMouseEnter={() => setHoveredSkill(skill.name)} // 마우스 올릴 때
-              onMouseLeave={() => setHoveredSkill(null)}       // 마우스 뗄 때
-              style={{ flexBasis, flexGrow: 1 }}
-              className={`h-20 rounded-xl flex items-center justify-center font-bold transition-all duration-300 cursor-pointer
-                ${
-                  skill.isLacking
-                    ? "bg-zinc-800 text-zinc-500 border-2 border-dashed border-zinc-700" 
-                    : `${skill.color} text-zinc-900`
-                }
-                ${isHovered ? "ring-4 ring-white shadow-[0_0_15px_rgba(255,255,255,0.3)] scale-[1.02]" : ""}
-                ${isDimmed ? "opacity-30 grayscale-50" : "opacity-100"}
-              `}
+            <div
+              key={chunk.id}
+              style={{ width: `${chunk.take}%` }}
+              className="px-1 py-1 box-border flex-shrink-0"
+              onMouseEnter={() => setHoveredSkill(chunk.originalSkill || null)}
+              onMouseLeave={() => setHoveredSkill(null)}
             >
-              {skill.name}
-            </motion.div>
+              <div
+                className={`h-20 flex items-center justify-center font-bold text-white cursor-pointer shadow-sm overflow-hidden px-2 transition duration-150 relative
+                  ${chunk.baseColor}
+                  ${roundedClass}
+                  ${chunk.isHovered ? "ring-2 ring-white z-10 scale-[1.02]" : "z-0 scale-100"}
+                  ${chunk.isDimmed ? "grayscale-50 opacity-30" : "opacity-100"}
+                `}
+              >
+                {chunk.isLongestPart && (
+                  <div className="truncate flex items-center gap-1">
+                    <span>{chunk.name}</span>
+                    {chunk.isBonus && (
+                      <span className="text-xs font-black opacity-90">(+{chunk.bonusAmount}%)</span>
+                    )}
+                  </div>
+                )}
+              </div>
+            </div>
           );
         })}
-
-        <motion.div 
-          initial={{ opacity: 0 }} 
-          animate={{ opacity: 1 }} 
-          transition={{ delay: skills.length * 0.1 }}
-          className="flex-1 h-20 border-2 border-dashed border-zinc-800 rounded-xl min-w-[100px]"
-        />
       </div>
     </div>
   );
