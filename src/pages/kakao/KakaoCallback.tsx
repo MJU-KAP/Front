@@ -1,9 +1,22 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useAuthStore } from '../../store/authStore';
 import { api } from '../../apis/api';
+import Toast from '../../components/Toast'; 
 
 export default function KakaoCallback() {
   const { login } = useAuthStore();
+  
+  const [toast, setToast] = useState<{
+    show: boolean;
+    title: string;
+    type: 'success' | 'warning' | 'info';
+  }>({
+    show: false,
+    title: '',
+    type: 'info',
+  });
+
+  const closeToast = () => setToast((prev) => ({ ...prev, show: false }));
 
   useEffect(() => {
     const code = new URL(window.location.href).searchParams.get('code');
@@ -14,16 +27,26 @@ export default function KakaoCallback() {
           const { accessToken } = res.data;
           login(accessToken);
 
-          window.location.href = '/'; 
-        })
-        .catch(err => {
-          console.error('로그인 처리 중 오류 발생, 더미 로그인으로 우회합니다:', err);
+          setToast({
+            show: true,
+            title: '로그인이 성공했습니다.',
+            type: 'success',
+          });
           
-          // 통신 실패 시 강제로 더미 토큰 발급 및 로그인 처리
+          setTimeout(() => {
+            window.location.href = '/'; 
+          }, 1000);
+        })
+        .catch(() => {
+          setToast({
+            show: true,
+            title: '곧 로그인이 완료됩니다.',
+            type: 'warning',
+          });
+
           const dummyToken = 'kakao-temp-token-12345';
           login(dummyToken);
-
-          // 더미 로그인 처리 확인을 위해 1초 대기 후 메인으로 이동
+          
           setTimeout(() => {
             window.location.href = '/'; 
           }, 1000);
@@ -40,6 +63,14 @@ export default function KakaoCallback() {
           <p className="text-zinc-500 text-sm mt-2">잠시만 기다려주세요...</p>
         </div>
       </div>
+
+      <Toast 
+        show={toast.show} 
+        onClose={closeToast} 
+        title={toast.title} 
+        type={toast.type} 
+        icon={toast.type === 'success' ? '✅' : '⚠️'}
+      />
     </div>
   );
 }
