@@ -2,53 +2,42 @@ import { useEffect, useState } from 'react';
 import { useAuthStore } from '../../store/authStore';
 import { api } from '../../apis/api';
 import Toast from '../../components/Toast'; 
+import { useNavigate } from 'react-router-dom'
 
 export default function KakaoCallback() {
   const { login } = useAuthStore();
-  
-  const [toast, setToast] = useState<{
-    show: boolean;
-    title: string;
-    type: 'success' | 'warning' | 'info';
-  }>({
+  const [toast, setToast] = useState({
     show: false,
     title: '',
-    type: 'info',
   });
 
   const closeToast = () => setToast((prev) => ({ ...prev, show: false }));
+  const navigate = useNavigate();
 
   useEffect(() => {
     const code = new URL(window.location.href).searchParams.get('code');
 
     if (code) {
-      api.post('/api/auth/kako/login', { code })
+      api.post('/api/auth/kakao/login', { code })
         .then(res => {
           const { accessToken } = res.data;
           login(accessToken);
 
-          setToast({
-            show: true,
-            title: '로그인이 성공했습니다.',
-            type: 'success',
-          });
-          
-          setTimeout(() => {
-            window.location.href = '/'; 
-          }, 1000);
+          navigate('/', { replace: true });
         })
-        .catch(() => {
+        .catch((err) => {
+          console.error("카카오 로그인 API 요청 실패: ", err);
+
           setToast({
             show: true,
             title: '곧 로그인이 완료됩니다.',
-            type: 'warning',
           });
 
           const dummyToken = 'kakao-temp-token-12345';
           login(dummyToken);
           
           setTimeout(() => {
-            window.location.href = '/'; 
+            navigate('/', { replace: true });
           }, 1000);
         });
     }
@@ -68,8 +57,8 @@ export default function KakaoCallback() {
         show={toast.show} 
         onClose={closeToast} 
         title={toast.title} 
-        type={toast.type} 
-        icon={toast.type === 'success' ? '✅' : '⚠️'}
+        type="warning" 
+        icon="⚠️"
       />
     </div>
   );
