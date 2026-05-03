@@ -1,5 +1,8 @@
+import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import type { ActionPlan } from '../type';
+import InsightModal from './InsightModal';
 
 function ActionPlanCard({ 
   plan, i, isRelated, isDimmed, setHoveredPlan 
@@ -42,41 +45,70 @@ interface Props {
 }
 
 export default function ActionPlanSidebar({ plans, insight, hoveredSkill, hoveredPlan, setHoveredPlan }: Props) {
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const navigate = useNavigate();
+
+  const previewText = insight;
+
   return (
-    <div className="bg-white rounded-3xl p-8 border border-zinc-200 shadow-sm sticky top-8 transition-all">
-      <div className="mb-6">
-        <h2 className="text-xl font-bold text-zinc-900 mb-1">맞춤형 액션 플랜</h2>
-        <p className="text-zinc-500 text-sm">부족한 역량을 채울 수 있는 활동을 추천합니다</p>
+    <>
+      <div className="bg-white rounded-3xl p-8 border border-zinc-200 shadow-sm sticky top-8 transition-all">
+        <div className="mb-6">
+          <h2 className="text-xl font-bold text-zinc-900 mb-1">맞춤형 액션 플랜</h2>
+          <p className="text-zinc-500 text-sm">부족한 역량을 채울 수 있는 활동을 추천합니다</p>
+        </div>
+
+        <div className="flex flex-col gap-4 mb-8">
+          {plans.map((plan, i) => {
+            const isRelated = hoveredSkill 
+              ? (plan.skillTarget.includes(hoveredSkill) || plan.title.includes(hoveredSkill) || plan.desc.includes(hoveredSkill))
+              : hoveredPlan === plan.id;
+              
+            const isDimmed = (hoveredSkill !== null && !isRelated) || (hoveredPlan !== null && !isRelated);
+
+            return (
+              <ActionPlanCard 
+                key={plan.id} 
+                plan={plan} 
+                i={i}
+                isRelated={isRelated} 
+                isDimmed={isDimmed} 
+                setHoveredPlan={setHoveredPlan} 
+              />
+            );
+          })}
+        </div>
+
+        <div className="pt-6 border-t border-zinc-100">
+          <h3 className="text-sm font-bold flex items-center gap-2 mb-3 text-orange-500">✨ AI 인사이트</h3>
+          
+          <div className="mb-6">
+            <p className="text-sm text-zinc-600 leading-relaxed line-clamp-3">
+              {previewText}
+            </p>
+            <div className="mt-2 text-left">
+              <button 
+                onClick={() => setIsModalOpen(true)}
+                className="inline-flex items-center px-3 py-1.5 bg-orange-50 hover:bg-orange-100 text-orange-500 text-xs font-bold rounded-full transition-colors"
+              >
+                + 더보기
+              </button>
+            </div>
+          </div>
+
+          <button 
+            onClick={() => navigate('/mypage')}
+            className="w-full py-4 bg-orange-500 text-white font-bold rounded-xl hover:bg-orange-600 transition-colors shadow-md shadow-orange-500/20"
+          >
+            분석 결과 저장하기
+          </button>
+        </div>
       </div>
 
-      <div className="flex flex-col gap-4 mb-8">
-        {plans.map((plan, i) => {
-          const isRelated = hoveredSkill 
-            ? (plan.skillTarget.includes(hoveredSkill) || plan.title.includes(hoveredSkill) || plan.desc.includes(hoveredSkill))
-            : hoveredPlan === plan.id;
-            
-          const isDimmed = (hoveredSkill !== null && !isRelated) || (hoveredPlan !== null && !isRelated);
-
-          return (
-            <ActionPlanCard 
-              key={plan.id} 
-              plan={plan} 
-              i={i}
-              isRelated={isRelated} 
-              isDimmed={isDimmed} 
-              setHoveredPlan={setHoveredPlan} 
-            />
-          );
-        })}
-      </div>
-
-      <div className="pt-6 border-t border-zinc-100">
-        <h3 className="text-sm font-bold flex items-center gap-2 mb-3 text-orange-500">✨ AI 인사이트</h3>
-        <p className="text-sm text-zinc-600 leading-relaxed mb-6">{insight}</p>
-        <button className="w-full py-4 bg-orange-500 text-white font-bold rounded-xl hover:bg-orange-600 transition-colors shadow-md shadow-orange-500/20">
-          분석 결과 저장하기
-        </button>
-      </div>
-    </div>
+      <InsightModal 
+        isOpen={isModalOpen} 
+        onClose={() => setIsModalOpen(false)} 
+      />
+    </>
   );
 }

@@ -7,6 +7,7 @@ import SkillCanvas from "./component/SkillCanvas";
 import SkillSummary from "./component/SkillSummary";
 import SkillProgress from "./component/SkillProgress";
 import ActionPlanSidebar from "./component/ActionPlanSidebar";
+import LoadingScreen from "./component/LoadingScreen";
 
 const getMockData = (id: string): AnalysisData => ({
   id: id,
@@ -15,9 +16,8 @@ const getMockData = (id: string): AnalysisData => ({
   totalOwned: 8,
   totalLacking: 3,
   totalScore: 72,
-  insight: "테스팅 역량이 가장 부족합니다. 공모전 참여 시 테스팅 블록이 30% 강화될 수 있습니다.",
+  insight: "React와 TypeScript 기반의 탄탄한 기본기와 뛰어난 형상 관리 능력을 보유하고 있습니다. 향후 Next.js와 테스트 자동화 역량을 보완한다면 프론트엔드 생태계 전반을 아우르는 완성도 높은 개발자로 도약할 수 있습니다.",
   skills: [
-    // 타입 에러 해결을 위해 color 속성 추가
     { name: "React", score: 85, color: "bg-emerald-500" },
     { name: "TypeScript", score: 78, color: "bg-orange-500" },
     { name: "CSS", score: 65, color: "bg-emerald-500" },
@@ -50,6 +50,10 @@ const getMockData = (id: string): AnalysisData => ({
 export default function ResultPage() {
   const { id } = useParams<{ id: string }>();
   const [data, setData] = useState<AnalysisData | null>(null);
+  
+  // 상태 세분화: 에러 처리 및 결과창 뷰 전환 제어
+  const [error, setError] = useState<string | null>(null);
+  const [showResultView, setShowResultView] = useState(false); 
 
   const [hoveredSkill, setHoveredSkill] = useState<string | null>(null);
   const [hoveredPlan, setHoveredPlan] = useState<number | null>(null);
@@ -57,14 +61,22 @@ export default function ResultPage() {
   useEffect(() => {
     if (!id) return;
     let isMounted = true;
+    
     const fetchAnalysisData = async () => {
       try {
-        await new Promise(resolve => setTimeout(resolve, 300));
+        // 실제 API 호출 시 여기에 로직 작성
+        // const res = await api.get(`/api/analysis/${id}`);
+        // if (isMounted) setData(res.data);
+        
+        await new Promise(resolve => setTimeout(resolve, 1000)); // 통신 시간 시뮬레이션
         if (isMounted) setData(getMockData(id));
-      } catch (error) {
-        console.error("데이터 통신 에러:", error);
+        
+      } catch (err) {
+        console.error("데이터 통신 에러:", err);
+        if (isMounted) setError("분석 결과를 불러오는데 실패했습니다."); 
       }
     };
+    
     fetchAnalysisData();
     return () => { isMounted = false; };
   }, [id]);
@@ -83,8 +95,22 @@ export default function ResultPage() {
   }, [hoveredPlan, data]);
 
   if (!id) return <Navigate to="/" replace />;
-  if (!data) return <div className="min-h-screen bg-zinc-50 flex justify-center items-center">분석 결과를 불러오는 중입니다...</div>;
+  
+  if (error) {
+    return <div className="min-h-screen bg-zinc-950 flex justify-center items-center text-red-500">{error}</div>;
+  }
+  
+  // 통신이 안 끝났거나, 유저가 결과 보기 버튼을 누르기 전에는 LoadingScreen 렌더링
+  if (!data || !showResultView) {
+    return (
+      <LoadingScreen 
+        isDataReady={data !== null} 
+        onComplete={() => setShowResultView(true)} 
+      />
+    );
+  }
 
+  // 실제 결과 화면 렌더링
   return (
     <div className="min-h-screen bg-zinc-50 text-zinc-900 w-full overflow-x-hidden">
       <ResultHeader fileName={data.fileName} />
