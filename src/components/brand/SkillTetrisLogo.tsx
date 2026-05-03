@@ -11,8 +11,8 @@ export default function SkillTetrisLogo({ className = '' }: SkillTetrisLogoProps
       to="/"
       className={`text-xl font-black tracking-tighter text-zinc-900 transition-opacity hover:opacity-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-orange-500 rounded-sm ${className}`}
     >
-      <span className="text-zinc-900">Skill</span>
-      <span className="text-orange-500">Tetris</span>
+      <span className="text-zinc-900">Next</span>
+      <span className="text-orange-500">Plan</span>
     </Link>
   );
 }
