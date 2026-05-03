@@ -1,6 +1,7 @@
 import { motion, type Variants } from 'framer-motion';
 import FileUpload from "./component/FileUpload";
 import KakaoLoginButton from '../kakao/component/KakaoLoginButton';
+import NextPlanLogo from '../../components/brand/NextPlanLogo';
 
 export default function MainPage() {
   // 공통 텍스트 애니메이션
@@ -31,8 +32,9 @@ export default function MainPage() {
   return (
     <div className="min-h-screen bg-white text-zinc-900 w-full overflow-x-hidden relative">
 
-      {/* 헤더 영역: 카카오 로그인 버튼 */}
-      <header className="absolute top-0 left-0 w-full p-6 flex justify-end z-50">
+      {/* 헤더: NextPlan 로고 + 카카오 로그인 */}
+      <header className="absolute top-0 left-0 z-50 flex w-full items-center justify-between p-6">
+        <NextPlanLogo />
         <KakaoLoginButton />
       </header>
 
