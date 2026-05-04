@@ -346,18 +346,8 @@ export default function ProfileSetupPage() {
                             }`}
                           >
                             <div className="min-w-0 flex-1">
-                              <div className="flex items-start gap-2">
-                                <span
-                                  className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-zinc-100 text-xs font-mono text-zinc-500"
-                                  aria-hidden
-                                >
-                                  {'</>'}
-                                </span>
-                                <div className="min-w-0">
-                                  <p className="truncate text-sm font-bold text-zinc-900">{item.name}</p>
-                                  <p className="truncate text-xs text-zinc-500">{item.category}</p>
-                                </div>
-                              </div>
+                              <p className="truncate text-sm font-bold text-zinc-900">{item.name}</p>
+                              <p className="truncate text-xs text-zinc-500">{item.category}</p>
                             </div>
                             <div className="shrink-0">
                               {added ? (
