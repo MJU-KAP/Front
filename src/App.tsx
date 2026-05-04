@@ -2,6 +2,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { useEffect } from 'react';
 import ProtectedRoute from './components/ProtectedRoute';
 import MainPage from './pages/main';
+import ProfileSetupPage from './pages/profile-setup';
 import { useAuthStore } from './store/authStore';
 import KakaoCallback from './pages/kakao/KakaoCallback';
 
@@ -11,8 +12,7 @@ const MyPage = () => <div className="p-20 text-center">👤 마이페이지 (로
 
 function App() {
   // Zustand 스토어에서 로그인 상태와 상태 검사 함수 꺼내오기
-  const isLoggedIn = useAuthStore((state) => state.isLoggedIn);
-  const checkAuth = useAuthStore((state) => state.checkAuth);
+  const { isLoggedIn, checkAuth } = useAuthStore();
 
   // 앱이 처음 렌더링될 때(새로고침 등) 로컬 스토리지 확인해서 로그인 상태 유지
   useEffect(() => {
@@ -26,7 +26,8 @@ function App() {
         <Route path="/" element={<MainPage />} />
         <Route path="/main" element={<MainPage />} />
         <Route path="/login" element={<Login />} />
-        
+        <Route path="/profile-setup" element={<ProfileSetupPage />} />
+
         {/* 카카오 로그인 완료 후 돌아올 콜백 라우트 추가 */}
         <Route path="/auth/kakao/callback" element={<KakaoCallback />} />
 
