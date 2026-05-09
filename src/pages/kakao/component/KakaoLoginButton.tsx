@@ -1,8 +1,7 @@
 import { useAuthStore } from '../../../store/authStore';
 
 export default function KakaoLoginButton() {
-  const isLoggedIn = useAuthStore((state) => state.isLoggedIn);
-  const logout = useAuthStore((state) => state.logout);
+  const { isLoggedIn, logout } = useAuthStore();
 
   const handleKakaoLogin = () => {
     const REST_API_KEY = import.meta.env.VITE_KAKAO_REST_API_KEY;
