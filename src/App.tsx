@@ -2,6 +2,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { useEffect } from 'react';
 import ProtectedRoute from './components/ProtectedRoute';
 import MainPage from './pages/main';
+import ProfileSetupPage from './pages/profile-setup';
 import { useAuthStore } from './store/authStore';
 import KakaoCallback from './pages/kakao/KakaoCallback';
 import ResultPage from './pages/result/index';
@@ -26,8 +27,8 @@ function App() {
         <Route path="/" element={<MainPage />} />
         <Route path="/main" element={<MainPage />} />
         <Route path="/login" element={<Login />} />
-        <Route path="/auth/kakao/callback" element={<KakaoCallback />} />
-        
+        <Route path="/profile-setup" element={<ProfileSetupPage />} />
+
         {/* 카카오 로그인 완료 후 돌아올 콜백 라우트 추가 */}
         <Route path="/auth/kakao/callback" element={<KakaoCallback />} />
 
