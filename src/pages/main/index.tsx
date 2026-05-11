@@ -38,10 +38,7 @@ export default function MainPage() {
         <KakaoLoginButton />
       </header>
 
-      <section className="bg-zinc-950 text-white min-h-[90vh] py-24 px-6 flex flex-col items-center justify-center text-center w-full">
-
-      <section className="bg-zinc-950 text-white min-h-[85vh] py-24 px-6 flex flex-col items-center justify-center text-center w-full">
-        <motion.span
+      <section className="bg-zinc-950 text-white min-h-[90vh] py-24 px-6 flex flex-col items-center justify-center text-center w-full">        <motion.span
           variants={fadeUpItem}
           initial="hidden"
           whileInView="visible"
