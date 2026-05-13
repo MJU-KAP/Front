@@ -112,19 +112,39 @@ export default function LoadingScreen({ isDataReady, onComplete }: LoadingScreen
 
       <div className="w-full max-w-5xl mt-12 flex flex-col items-center">
         <div className="px-3 py-1 bg-[#1a1511] text-orange-500 border border-orange-500/30 rounded-full text-xs font-bold tracking-wide mb-4 flex items-center gap-1.5">
-          {isDone ? '✨ YOUR RESULTS' : '🔥 TRENDING NOW'}
+          🔥 TRENDING NOW
         </div>
         
         <h2 className="text-lg font-bold mb-1">
-          {isDone ? '당신에게 맞는 직군 TOP 5' : '요즘 채용 많은 직군 TOP 5'}
+          요즘 채용이 많은 관련 직군 TOP 5
         </h2>
         <p className="text-zinc-500 text-sm mb-8">
-          {isDone ? 'AI가 분석한 당신만의 추천 직군이에요' : '기다리는 동안 채용 시장 동향을 확인해보세요'}
+          기다리는 동안 채용 시장 동향을 확인해보세요
         </p>
 
         {isFetching ? (
-          <div className="flex gap-4 w-full justify-center">
-            <span className="text-zinc-500 text-sm animate-pulse">실시간 채용 데이터를 불러오는 중입니다...</span>
+          <div className="flex gap-4 w-full overflow-x-auto pb-4 justify-center">
+            {[1, 2, 3, 4, 5].map((item) => (
+              <div 
+                key={item}
+                className={`min-w-[160px] h-[150px] bg-[#18181b] rounded-2xl p-5 flex flex-col transition-colors border ${
+                  item === 1 ? 'border-orange-500/50' : 'border-zinc-800/50'
+                }`}
+              >
+                <div className="flex justify-between items-start mb-3">
+                  <span className={`text-sm font-bold ${item === 1 ? 'text-orange-500' : 'text-zinc-400'}`}>
+                    #{item}
+                  </span>
+                  {item === 1 && (
+                    <span className="text-[10px] font-bold text-orange-500">BEST</span>
+                  )}
+                </div>
+                
+                <div className="w-7 h-7 mb-3 bg-zinc-800 rounded-md animate-pulse" />
+                <div className="w-20 h-4 bg-zinc-800 rounded animate-pulse mb-1 mt-1" />
+                <div className="w-14 h-3 bg-zinc-800 rounded mt-auto animate-pulse" />
+              </div>
+            ))}
           </div>
         ) : (
           <div className="flex gap-4 w-full overflow-x-auto pb-4 justify-center">
@@ -148,7 +168,7 @@ export default function LoadingScreen({ isDataReady, onComplete }: LoadingScreen
                   <svg fill="currentColor" viewBox="0 0 24 24">{role.icon}</svg>
                 </div>
 
-                <h3 className="font-bold text-white text-base mb-1">{role.title}</h3>
+                <h3 className="font-bold text-white text-base mb-1 leading-tight break-keep">{role.title}</h3>
                 
                 <p className="text-zinc-500 text-[10px] mt-auto">{role.countStr}</p>
               </div>
