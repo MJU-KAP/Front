@@ -2,6 +2,7 @@ import { motion, type Variants } from 'framer-motion';
 import FileUpload from "./component/FileUpload";
 import KakaoLoginButton from '../kakao/component/KakaoLoginButton';
 import NextPlanLogo from '../../components/brand/NextPlanLogo';
+import { testCrawlingApi } from '../../apis/crawl';
 
 export default function MainPage() {
   // 공통 텍스트 애니메이션
@@ -61,6 +62,8 @@ export default function MainPage() {
           <span className="text-orange-500">AI 역량 분석</span>
         </motion.h1>
 
+        <button onClick={() => testCrawlingApi()}>크롤링 API 테스트</button>
+        
         <motion.p
           variants={fadeUpItem}
           initial="hidden"
