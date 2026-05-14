@@ -1,9 +1,12 @@
 import { motion, type Variants } from 'framer-motion';
+import { useNavigate } from 'react-router-dom';
 import FileUpload from "./component/FileUpload";
 import KakaoLoginButton from '../kakao/component/KakaoLoginButton';
 import NextPlanLogo from '../../components/brand/NextPlanLogo';
 
 export default function MainPage() {
+  const navigate = useNavigate();
+
   // 공통 텍스트 애니메이션
   const fadeUpItem: Variants = {
     hidden: { opacity: 0, y: 30 },
@@ -38,7 +41,8 @@ export default function MainPage() {
         <KakaoLoginButton />
       </header>
 
-      <section className="bg-zinc-950 text-white min-h-[90vh] py-24 px-6 flex flex-col items-center justify-center text-center w-full">        <motion.span
+      <section className="bg-zinc-950 text-white min-h-[90vh] py-24 px-6 flex flex-col items-center justify-center text-center w-full">
+        <motion.span
           variants={fadeUpItem}
           initial="hidden"
           whileInView="visible"
@@ -60,6 +64,29 @@ export default function MainPage() {
           <span className="text-orange-500">AI 역량 분석</span>
         </motion.h1>
 
+        {/* 새롭게 추가된 버튼 그룹 영역 */}
+        <motion.div
+          variants={fadeUpItem}
+          initial="hidden"
+          whileInView="visible"
+          viewport={{ once: false, amount: 0.5 }}
+          className="flex flex-wrap justify-center gap-4 mb-12 relative z-10"
+        >
+
+          <button 
+            onClick={() => navigate('/board/activities')}
+            className="px-6 py-3 bg-orange-500 text-white rounded-xl hover:bg-orange-600 transition-colors text-sm font-bold shadow-lg shadow-orange-500/20"
+          >
+            대외활동 보기
+          </button>
+          <button 
+            onClick={() => navigate('/board/competitions')}
+            className="px-6 py-3 bg-orange-500 text-white rounded-xl hover:bg-orange-600 transition-colors text-sm font-bold shadow-lg shadow-orange-500/20"
+          >
+            공모전 보기
+          </button>
+        </motion.div>
+        
         <motion.p
           variants={fadeUpItem}
           initial="hidden"
