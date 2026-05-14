@@ -6,6 +6,9 @@ import ProfileSetupPage from './pages/profile-setup';
 import { useAuthStore } from './store/authStore';
 import KakaoCallback from './pages/kakao/KakaoCallback';
 import ResultPage from './pages/result/index';
+import BoardPage from './pages/board/BoardPage';
+import BoardDetailPage from './pages/board/BoardDetailPage';
+
 
 // 임시 페이지 컴포넌트들
 const Login = () => <div className="p-20 text-center">🔑 로그인 페이지</div>;
@@ -23,14 +26,17 @@ function App() {
   return (
     <BrowserRouter>
       <Routes>
-        {/* --- 공개 페이지  --- */}
+        {/* --- 공개 페이지 --- */}
         <Route path="/" element={<MainPage />} />
         <Route path="/main" element={<MainPage />} />
         <Route path="/login" element={<Login />} />
         <Route path="/profile-setup" element={<ProfileSetupPage />} />
 
-        {/* 카카오 로그인 완료 후 돌아올 콜백 라우트 추가 */}
+        {/* 카카오 로그인 완료 후 돌아올 콜백 라우트 */}
         <Route path="/auth/kakao/callback" element={<KakaoCallback />} />
+
+        <Route path="/board/:category" element={<BoardPage />} />
+        <Route path="/board/:category/:id" element={<BoardDetailPage />} />
 
         {/* --- 보호된 페이지 --- */}
         <Route element={<ProtectedRoute isAuthenticated={isLoggedIn} />}>
