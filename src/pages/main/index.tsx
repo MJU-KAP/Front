@@ -2,7 +2,7 @@ import { motion, type Variants } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import FileUpload from "./component/FileUpload";
 import KakaoLoginButton from '../kakao/component/KakaoLoginButton';
-import NextPlanLogo from '../../components/brand/NextPlanLogo';
+import AppHeader from '../../components/layout/AppHeader';
 
 export default function MainPage() {
   const navigate = useNavigate();
@@ -33,13 +33,9 @@ export default function MainPage() {
   };
 
   return (
-    <div className="min-h-screen bg-white text-zinc-900 w-full overflow-x-hidden relative">
+    <div className="min-h-screen bg-white text-zinc-900 w-full overflow-x-hidden">
 
-      {/* 헤더: NextPlan 로고 + 카카오 로그인 */}
-      <header className="absolute top-0 left-0 z-50 flex w-full items-center justify-between p-6">
-        <NextPlanLogo />
-        <KakaoLoginButton />
-      </header>
+      <AppHeader rightSlot={<KakaoLoginButton />} />
 
       <section className="bg-zinc-950 text-white min-h-[90vh] py-24 px-6 flex flex-col items-center justify-center text-center w-full">
         <motion.span
