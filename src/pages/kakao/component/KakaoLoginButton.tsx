@@ -1,3 +1,4 @@
+import { Button } from '../../../components/ui/Button';
 import { useAuthStore } from '../../../store/authStore';
 
 export default function KakaoLoginButton() {
@@ -12,15 +13,16 @@ export default function KakaoLoginButton() {
     window.location.href = KAKAO_AUTH_URL;
   };
 
-  // 로그인 상태일 때: 로그아웃 버튼 보여주기
   if (isLoggedIn) {
     return (
-      <button 
-        onClick={logout}
-        className="flex items-center gap-2 bg-zinc-800 hover:bg-zinc-700 text-white px-5 py-2.5 rounded-full font-bold text-sm transition-colors shadow-lg shadow-black/10"
-      >
-        로그아웃
-      </button>
+      <>
+        <Button variant="secondary" to="/mypage">
+          마이페이지
+        </Button>
+        <Button variant="primary" onClick={logout}>
+          로그아웃
+        </Button>
+      </>
     );
   }
 
