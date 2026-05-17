@@ -8,7 +8,7 @@ type AppHeaderProps = {
 
 export default function AppHeader({ rightSlot }: AppHeaderProps) {
   return (
-    <header className="sticky top-0 z-50 w-full border-b border-zinc-100 bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/85">
+    <header className="sticky top-0 z-50 w-full border-b border-zinc-100 bg-white">
       <div className="mx-auto flex h-14 max-w-6xl items-center justify-between px-4 sm:h-16 sm:px-6">
         <NextPlanLogo />
         {rightSlot ? (
