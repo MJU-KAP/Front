@@ -9,12 +9,11 @@ import KakaoCallback from './pages/kakao/KakaoCallback';
 import ResultPage from './pages/result/index';
 import BoardPage from './pages/board/BoardPage';
 import BoardDetailPage from './pages/board/BoardDetailPage';
+import MyPage from './pages/mypage';
 
 
 // 임시 페이지 컴포넌트들
 const Login = () => <div className="p-20 text-center">🔑 로그인 페이지</div>;
-const MyPage = () => <div className="p-20 text-center">👤 마이페이지 (로그인 성공!)</div>;
-
 function App() {
   // Zustand 스토어에서 로그인 상태와 상태 검사 함수 꺼내오기
   const { isLoggedIn, checkAuth } = useAuthStore();
