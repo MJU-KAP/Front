@@ -1,17 +1,12 @@
 import { useCallback, useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { fetchMyPage } from '../../apis/userApi';
-import NextPlanLogo from '../../components/brand/NextPlanLogo';
 import { Button } from '../../components/ui/Button';
-import { useAuthStore } from '../../store/authStore';
 import type { MyPageResponse } from '../../types/mypage';
 import AnalysisHistoryCard from './components/AnalysisHistoryCard';
 import ProfileCard from './components/ProfileCard';
 import { MOCK_MY_PAGE } from './mockMyPageData';
 
 export default function MyPage() {
-  const navigate = useNavigate();
-  const { logout } = useAuthStore();
   const [data, setData] = useState<MyPageResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -38,22 +33,8 @@ export default function MyPage() {
     void load();
   }, [load]);
 
-  const handleLogout = () => {
-    logout();
-    navigate('/');
-  };
-
   return (
     <div className="min-h-screen bg-zinc-100 text-zinc-900">
-      <header className="sticky top-0 z-50 border-b border-zinc-100 bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/85">
-        <div className="mx-auto flex h-14 max-w-6xl items-center justify-between px-4 sm:h-16 sm:px-6">
-          <NextPlanLogo />
-          <Button variant="primary" onClick={handleLogout}>
-            로그아웃
-          </Button>
-        </div>
-      </header>
-
       <main className="mx-auto max-w-6xl px-4 py-8 sm:px-6 sm:py-10">
         {loading && (
           <p className="py-20 text-center text-sm text-zinc-500" role="status">
