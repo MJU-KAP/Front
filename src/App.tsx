@@ -27,14 +27,14 @@ function App() {
   return (
     <BrowserRouter>
       <Routes>
-        {/* 헤더 없음: 로그인 처리 전용 화면 */}
+        {/* 전역 헤더 없음 */}
         <Route path="/auth/kakao/callback" element={<KakaoCallback />} />
+        <Route path="/profile-setup" element={<ProfileSetupPage />} />
 
         <Route element={<AppLayout />}>
           <Route path="/" element={<MainPage />} />
           <Route path="/main" element={<MainPage />} />
           <Route path="/login" element={<Login />} />
-          <Route path="/profile-setup" element={<ProfileSetupPage />} />
           <Route path="/board/:category" element={<BoardPage />} />
           <Route path="/board/:category/:id" element={<BoardDetailPage />} />
 
