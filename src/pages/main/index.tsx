@@ -1,9 +1,6 @@
 import { motion, type Variants } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import FileUpload from "./component/FileUpload";
-import KakaoLoginButton from '../kakao/component/KakaoLoginButton';
-import AppHeader from '../../components/layout/AppHeader';
-
 export default function MainPage() {
   const navigate = useNavigate();
 
@@ -34,9 +31,6 @@ export default function MainPage() {
 
   return (
     <div className="min-h-screen bg-white text-zinc-900 w-full overflow-x-hidden">
-
-      <AppHeader rightSlot={<KakaoLoginButton />} />
-
       <section className="bg-zinc-950 text-white min-h-[90vh] py-24 px-6 flex flex-col items-center justify-center text-center w-full">
         <motion.span
           variants={fadeUpItem}
