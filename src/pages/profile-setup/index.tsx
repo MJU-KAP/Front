@@ -172,7 +172,7 @@ export default function ProfileSetupPage() {
 
   return (
     <div className="min-h-screen bg-zinc-100 px-4 py-10 text-zinc-900">
-      <div className="mx-auto flex w-full max-w-lg flex-col items-center">
+      <div className="mx-auto flex w-full max-w-lg flex-col items-center sm:max-w-xl md:max-w-2xl lg:max-w-3xl">
         <div className="mb-8 flex justify-center">
           <NextPlanLogo className="text-2xl" />
         </div>
