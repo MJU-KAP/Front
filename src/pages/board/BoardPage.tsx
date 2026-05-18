@@ -63,14 +63,15 @@ export default function BoardPage() {
     return <Navigate to="/" replace />;
   }
 
-  if (isLoading) {
-    return <div className="max-w-6xl mx-auto p-6 bg-[#f4f5f7] min-h-screen">데이터를 불러오는 중입니다...</div>;
-  }
-
   return (
     <div className="min-h-screen bg-[#f4f5f7]">
-      <BoardListTemplate category={category} items={displayedItems} />
-      {displayedItems.length < allBoardItems.length && (
+      <BoardListTemplate 
+        category={category} 
+        items={displayedItems} 
+        isLoading={isLoading} 
+      />
+
+      {!isLoading && displayedItems.length < allBoardItems.length && (
         <div ref={observerRef} className="w-full h-10" />
       )}
     </div>

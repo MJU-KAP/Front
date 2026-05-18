@@ -4,11 +4,12 @@ import BoardCard, { type BoardItem } from './BoardCard';
 interface BoardListTemplateProps {
   category: string; 
   items: BoardItem[];
+  isLoading?: boolean;
 }
 
 type SortOption = 'latest' | 'deadline';
 
-export default function BoardListTemplate({ category, items }: BoardListTemplateProps) {
+export default function BoardListTemplate({ category, items, isLoading = false }: BoardListTemplateProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const [sortBy, setSortBy] = useState<SortOption>('latest');
   
@@ -18,7 +19,6 @@ export default function BoardListTemplate({ category, items }: BoardListTemplate
   );
 
   return (
-
     <div className="w-full max-w-6xl mx-auto px-6 pt-12 pb-20 bg-[#f4f5f7] font-sans">
 
       <div className="bg-white p-3 rounded-lg shadow-sm border border-gray-200 mb-8 flex items-center h-[54px]">
@@ -35,7 +35,9 @@ export default function BoardListTemplate({ category, items }: BoardListTemplate
       </div>
 
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6 h-auto sm:h-10 text-sm text-gray-600">
-        <span className="font-medium">검색결과 <span className="text-orange-500 font-bold">{filteredItems.length}</span>건</span>
+        <span className="font-medium">
+          검색결과 <span className="text-orange-500 font-bold">{isLoading ? 0 : filteredItems.length}</span>건
+        </span>
         
         <div className="flex items-center gap-2">
           <button
@@ -63,11 +65,21 @@ export default function BoardListTemplate({ category, items }: BoardListTemplate
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-5 items-start">
-        {filteredItems.length > 0 ? (
+        {isLoading ? (
+          /* 1. 로딩 중일 때 스켈레톤 UI (예: 8개 렌더링) */
+          Array.from({ length: 8 }).map((_, index) => (
+            <div 
+              key={index} 
+              className="w-full h-[320px] bg-gray-200 rounded-xl animate-pulse" 
+            />
+          ))
+        ) : filteredItems.length > 0 ? (
+          /* 2. 로딩 완료 및 데이터가 있을 때 */
           filteredItems.map(item => (
             <BoardCard key={item.id} item={item} basePath={`/board/${category}`} />
           ))
         ) : (
+          /* 3. 로딩 완료 및 데이터가 없을 때 */
           <div className="col-span-full py-20 text-center text-gray-400">
             검색 결과가 없습니다.
           </div>
