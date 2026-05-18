@@ -1,5 +1,6 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { useEffect } from 'react';
+import AppLayout from './components/layout/AppLayout';
 import ProtectedRoute from './components/ProtectedRoute';
 import MainPage from './pages/main';
 import ProfileSetupPage from './pages/profile-setup';
@@ -26,26 +27,24 @@ function App() {
   return (
     <BrowserRouter>
       <Routes>
-        {/* --- 공개 페이지 --- */}
-        <Route path="/" element={<MainPage />} />
-        <Route path="/main" element={<MainPage />} />
-        <Route path="/login" element={<Login />} />
+        {/* 전역 헤더 없음 */}
+        <Route path="/auth/kakao/callback" element={<KakaoCallback />} />
         <Route path="/profile-setup" element={<ProfileSetupPage />} />
 
-        {/* 카카오 로그인 완료 후 돌아올 콜백 라우트 */}
-        <Route path="/auth/kakao/callback" element={<KakaoCallback />} />
+        <Route element={<AppLayout />}>
+          <Route path="/" element={<MainPage />} />
+          <Route path="/main" element={<MainPage />} />
+          <Route path="/login" element={<Login />} />
+          <Route path="/board/:category" element={<BoardPage />} />
+          <Route path="/board/:category/:id" element={<BoardDetailPage />} />
 
-        <Route path="/board/:category" element={<BoardPage />} />
-        <Route path="/board/:category/:id" element={<BoardDetailPage />} />
-
-        {/* --- 보호된 페이지 --- */}
-        <Route element={<ProtectedRoute isAuthenticated={isLoggedIn} />}>
-          <Route path="/mypage" element={<MyPage />} />
-          <Route path="/result/:id" element={<ResultPage />} />
-          <Route path="/result" element={<Navigate to="/" replace />} />
+          <Route element={<ProtectedRoute isAuthenticated={isLoggedIn} />}>
+            <Route path="/mypage" element={<MyPage />} />
+            <Route path="/result/:id" element={<ResultPage />} />
+            <Route path="/result" element={<Navigate to="/" replace />} />
+          </Route>
         </Route>
 
-        {/* --- 예외 처리 --- */}
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </BrowserRouter>
