@@ -24,33 +24,40 @@ const ROLE_ICONS: Record<string, JSX.Element> = {
 
 const DEFAULT_ICON = <path d="M12 2L2 22h20L12 2z"/>;
 
-// 더미 데이터
+// 점핏 2025 상반기 기업 채용 공고 데이터 기반 폴백 데이터
 const FALLBACK_DUMMY_DATA: JobTrendData[] = [
-  { id: 1, title: 'Frontend', count: 4230 },
-  { id: 2, title: 'Backend', count: 3850 },
-  { id: 3, title: 'AI and Data Scientist', count: 2100 },
-  { id: 4, title: 'Data Analyst', count: 1800 },
-  { id: 5, title: 'DevSecOps', count: 1540 },
+  { id: 1, title: 'Backend', count: 22251 },
+  { id: 2, title: 'SW/Solution', count: 15529 },
+  { id: 3, title: 'Frontend', count: 15215 },
+  { id: 4, title: 'DevOps', count: 15150 },
+  { id: 5, title: 'HW/Embedded', count: 9997 },
+  { id: 6, title: 'AI Engineer', count: 9599 },
+  { id: 7, title: 'Security', count: 9074 },
+  { id: 8, title: 'Data Engineer', count: 6935 },
+  { id: 9, title: 'DBA', count: 5586 },
+  { id: 10, title: 'PM', count: 4793 },
+  { id: 11, title: 'Web Publisher', count: 4525 },
+  { id: 12, title: 'Android Developer', count: 3881 },
+  { id: 13, title: 'QA Engineer', count: 3849 },
+  { id: 14, title: 'Blockchain', count: 3032 },
+  { id: 15, title: 'iOS Developer', count: 2932 },
 ];
 
-// 직군 이름을 기반으로 상위 카테고리 아이콘을 찾아주는 헬퍼 함수
 const getIconForRole = (title: string): JSX.Element => {
-  // 정확히 일치하는 키가 있으면 바로 반환
   if (ROLE_ICONS[title]) return ROLE_ICONS[title];
 
-  // 없으면 소문자로 변환하여 키워드 포함 여부로 대표 아이콘 매핑
   const lowerTitle = title.toLowerCase();
 
   if (lowerTitle.includes('ai') || lowerTitle.includes('machine learning') || lowerTitle.includes('mlops')) {
     return ROLE_ICONS['AI Engineer'];
   }
-  if (lowerTitle.includes('data') || lowerTitle.includes('bi analyst')) {
+  if (lowerTitle.includes('data') || lowerTitle.includes('dba') || lowerTitle.includes('bi')) {
     return ROLE_ICONS['Data Engineer'];
   }
   if (lowerTitle.includes('game')) {
     return ROLE_ICONS['Game Developer'];
   }
-  if (lowerTitle.includes('security') || lowerTitle.includes('secops')) {
+  if (lowerTitle.includes('security') || lowerTitle.includes('secops') || lowerTitle.includes('blockchain')) {
     return ROLE_ICONS['DevOps']; 
   }
   if (lowerTitle.includes('android')) {
@@ -59,8 +66,14 @@ const getIconForRole = (title: string): JSX.Element => {
   if (lowerTitle.includes('ios')) {
     return ROLE_ICONS['iOS Developer'];
   }
+  if (lowerTitle.includes('publisher') || lowerTitle.includes('frontend') || lowerTitle.includes('web')) {
+    return ROLE_ICONS['Frontend'];
+  }
 
-  // 매핑되는 것이 전혀 없으면 기본 아이콘 반환
+  if (lowerTitle.includes('backend') || lowerTitle.includes('sw/solution') || lowerTitle.includes('embedded')) {
+    return ROLE_ICONS['Backend'];
+  }
+
   return DEFAULT_ICON;
 };
 
@@ -77,18 +90,20 @@ export const useJobTrends = () => {
         try {
           // API 호출 시도
           const apiData = await fetchJobTrends();
-          
-          // API에서 정상적으로 데이터를 받아오면 상위 5개를 사용
-          if (apiData && apiData.length > 0) {
+
+          const hasActualData = apiData && apiData.length > 0 && apiData.some(item => item.count > 0);
+
+          if (hasActualData) {
+
             rawData = apiData.slice(0, 5);
           } else {
-            // 빈 배열이 오면 더미 데이터 폴백
-            rawData = FALLBACK_DUMMY_DATA;
+
+            rawData = FALLBACK_DUMMY_DATA.slice(0, 5);
           }
         } catch (apiError) {
           // 서버 통신 에러 발생 시 더미 데이터 폴백
           console.warn('API 연동 실패, 더미 데이터를 표시합니다.', apiError);
-          rawData = FALLBACK_DUMMY_DATA;
+          rawData = FALLBACK_DUMMY_DATA.slice(0, 5);
         }
         
         // 데이터 가공 및 아이콘 매핑 적용

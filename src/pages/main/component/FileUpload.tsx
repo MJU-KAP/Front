@@ -2,8 +2,10 @@ import { useState, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Toast from '../../../components/Toast';
 import { useAuthStore } from '../../../store/authStore';
+import { api } from '../../../apis/api'; 
 
 const MAX_FILE_SIZE = 100 * 1024 * 1024;
+const ALLOWED_EXTENSIONS = ['pdf', 'docx', 'txt', 'png', 'jpg', 'jpeg'];
 
 export default function FileUpload() {
   const isLoggedIn = useAuthStore((state) => state.isLoggedIn);
@@ -38,6 +40,17 @@ export default function FileUpload() {
 
     const validFiles: File[] = [];
     Array.from(newFiles).forEach((file) => {
+      const fileExtension = file.name.split('.').pop()?.toLowerCase() || '';
+      
+      if (!ALLOWED_EXTENSIONS.includes(fileExtension)) {
+        triggerToast(
+          '지원하지 않는 형식', 
+          `${file.name}은 지원하지 않는 파일 형식입니다. (PDF, DOCX, TXT, PNG, JPG, JPEG만 가능)`, 
+          '⚠️'
+        );
+        return;
+      }
+
       if (file.size <= MAX_FILE_SIZE) {
         validFiles.push(file);
       } else {
@@ -52,16 +65,42 @@ export default function FileUpload() {
     setFiles((prev) => prev.filter((_, index) => index !== indexToRemove));
   }, []);
 
-  const handleAnalyze = useCallback(() => {
+  const handleAnalyze = useCallback(async () => {
     if (!isLoggedIn) {
       triggerToast('로그인 필요', '로그인 후 분석 기능을 이용할 수 있습니다.', '🔒');
       return;
     }
     
-    // 예시: 분석 아이디 123으로 이동 처리
-    const mockAnalysisId = "123";
-    navigate(`/result/${mockAnalysisId}`);
-  }, [isLoggedIn, triggerToast, navigate]);
+    if (files.length === 0) return;
+
+    try {
+      const formData = new FormData();
+
+      files.forEach((file) => {
+        formData.append('files', file); 
+      });
+
+      // 파일 업로드 요청 실행
+      const response = await api.post('/api/fileupload', formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      });
+
+      // 서버에서 내려준 응답 데이터 확보
+      const resultData = response.data;
+      
+      // 받은 결과값 콘솔에 띄우기
+      console.log('📦 서버에서 받은 분석 결과 데이터:', resultData);
+
+      // 다음 페이지로 이동할 때 받은 데이터 안의 고유 ID 활용 (없으면 기본값 123)
+      navigate(`/result/${resultData.analysisId || '123'}`); 
+
+    } catch (error) {
+      console.error("파일 분석 요청 실패:", error);
+      triggerToast('업로드 실패', '파일 업로드 및 분석 중 오류가 발생했습니다.', '❌', 'warning');
+    }
+  }, [isLoggedIn, files, triggerToast, navigate]);
 
   const handleDragOver = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -111,7 +150,7 @@ export default function FileUpload() {
             <div className="w-16 h-16 bg-zinc-800 rounded-full flex items-center justify-center text-zinc-400 text-2xl">📄</div>
             <div>
               <p className="text-xl font-semibold text-white">분석할 파일을 드래그하여 업로드하세요</p>
-              <p className="text-zinc-500 text-sm mt-2">최대 100MB (여러 파일 선택 가능)</p>
+              <p className="text-zinc-500 text-sm mt-2">최대 100MB (PDF, DOCX, TXT, 이미지 가능)</p>
             </div>
             <button className="mt-4 px-8 py-3 bg-orange-500 text-white font-bold rounded-full transition-transform active:scale-95">
               파일 선택하기
