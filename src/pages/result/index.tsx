@@ -25,7 +25,7 @@ export default function ResultPage() {
     const fetchAnalysisData = async () => {
       try {
         const res = await api.get(`/api/analyze/result/${id}`);
-        const parsed = JSON.parse(res.data.result);
+        const parsed = res.data.result; // JSON.parse(res.data.result);
 
         if (isMounted) {
           const ownedSkills = (parsed.user_skills || []).map((s: ParsedSkill) => ({
