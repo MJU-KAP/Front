@@ -1,39 +1,17 @@
 import { useMemo } from "react";
-import type { Skill } from "../type";
+import type { SkillCanvasProps, SkillChunk } from "../type";
 
-interface SkillCanvasProps {
-  skills: Skill[];
-  hoveredSkill: string | null;
-  setHoveredSkill: (skill: string | null) => void;
-  hoveredPlanData: { skill: string, amount: number } | null;
-}
-
-interface SkillChunk {
-  id: string;
-  name?: string;
-  take: number;
-  baseColor?: string;
-  isHovered?: boolean;
-  isDimmed?: boolean;
-  isBonus?: boolean;
-  bonusAmount?: number;
-  isFirstPart?: boolean;
-  isLastPart?: boolean;
-  originalSkill?: string;
-  isLongestPart?: boolean;
-  isDummy?: boolean;
-}
-
-export default function SkillCanvas({ skills, hoveredSkill, setHoveredSkill, hoveredPlanData }: SkillCanvasProps) {
+export default function SkillCanvas({ skills = [], hoveredSkill, setHoveredSkill, hoveredPlanData }: SkillCanvasProps) {
   
   const chunks = useMemo(() => {
     const result: SkillChunk[] = [];
     let currentWidth = 0;
 
-    skills.forEach((skill, index) => {
+    skills?.forEach((skill, index) => {
       const isBonus = hoveredPlanData?.skill === skill.name;
       const bonusAmount = isBonus ? hoveredPlanData.amount : 0;
-      const displayScore = Math.min(100, skill.score + bonusAmount);
+
+      const displayScore = skill.isLacking ? (isBonus ? bonusAmount : 20) : Math.min(100, skill.score + bonusAmount);
 
       const isHovered = hoveredSkill === skill.name || isBonus;
       const isDimmed = (hoveredSkill !== null && hoveredSkill !== skill.name) || 
@@ -60,7 +38,8 @@ export default function SkillCanvas({ skills, hoveredSkill, setHoveredSkill, hov
           isFirstPart: partIndex === 0,
           isLastPart: remaining === take,
           originalSkill: skill.name,
-          isLongestPart: false 
+          isLongestPart: false,
+          isLacking: skill.isLacking 
         });
 
         remaining -= take;
@@ -71,7 +50,7 @@ export default function SkillCanvas({ skills, hoveredSkill, setHoveredSkill, hov
       }
     });
 
-    skills.forEach(skill => {
+    skills?.forEach(skill => {
       const skillChunks = result.filter(c => c.originalSkill === skill.name);
       if (skillChunks.length > 0) {
         let maxChunk = skillChunks[0];
@@ -89,10 +68,14 @@ export default function SkillCanvas({ skills, hoveredSkill, setHoveredSkill, hov
     return result;
   }, [skills, hoveredSkill, hoveredPlanData]);
 
+  if (!skills || skills.length === 0) {
+    return <div className="bg-zinc-900 rounded-3xl p-6 shadow-lg border border-zinc-800 w-full h-32 flex items-center justify-center text-zinc-500">결과를 불러오는 중입니다...</div>;
+  }
+
   return (
     <div className="bg-zinc-900 rounded-3xl p-6 shadow-lg border border-zinc-800 w-full overflow-hidden">
       <div className="flex flex-wrap w-full -mx-1 -my-1">
-        {chunks.map((chunk) => {
+        {chunks?.map((chunk) => {
           if (chunk.isDummy) {
             return (
               <div 
@@ -108,6 +91,10 @@ export default function SkillCanvas({ skills, hoveredSkill, setHoveredSkill, hov
           else if (!chunk.isFirstPart) roundedClass = "rounded-l-sm rounded-r-xl";
           else if (!chunk.isLastPart) roundedClass = "rounded-l-xl rounded-r-sm";
 
+          const boxStyle = chunk.isLacking && !chunk.isBonus
+            ? "border-2 border-dashed border-zinc-600 bg-transparent text-zinc-400"
+            : `${chunk.baseColor} text-white`;
+
           return (
             <div
               key={chunk.id}
@@ -117,11 +104,11 @@ export default function SkillCanvas({ skills, hoveredSkill, setHoveredSkill, hov
               onMouseLeave={() => setHoveredSkill(null)}
             >
               <div
-                className={`h-20 flex items-center justify-center font-bold text-white cursor-pointer shadow-sm overflow-hidden px-2 transition duration-150 relative
-                  ${chunk.baseColor}
+                className={`h-20 flex items-center justify-center font-bold cursor-pointer shadow-sm overflow-hidden px-2 transition duration-150 relative
+                  ${boxStyle}
                   ${roundedClass}
                   ${chunk.isHovered ? "ring-2 ring-white z-10 scale-[1.02]" : "z-0 scale-100"}
-                  ${chunk.isDimmed ? "grayscale-50 opacity-30" : "opacity-100"}
+                  ${chunk.isDimmed ? "grayscale opacity-30" : "opacity-100"}
                 `}
               >
                 {chunk.isLongestPart && (

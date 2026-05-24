@@ -63,7 +63,7 @@ export default function MyPage() {
                 <p className="text-sm text-zinc-500">총 {data.analysisCount}건</p>
               </div>
 
-              {data.analysisRecords.length === 0 ? (
+              {!data.analysisRecords || data.analysisRecords.length === 0 ? (
                 <p className="rounded-2xl border border-dashed border-zinc-200 bg-white px-6 py-12 text-center text-sm text-zinc-500">
                   아직 AI 분석 기록이 없습니다.
                 </p>
