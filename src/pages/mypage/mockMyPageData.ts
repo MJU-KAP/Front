@@ -1,11 +1,17 @@
 import type { MyPageResponse } from '../../types/mypage';
 
-/** 백엔드 미연동 시 개발 환경 UI 확인용 */
+/* 백엔드 미연동 시 개발 환경 UI 확인용 */
 export const MOCK_MY_PAGE: MyPageResponse = {
   nickname: '김철익',
   email: 'chulick.kim@kakao.com',
   joinedAt: '2025-03-15T00:00:00+09:00',
   analysisCount: 3,
+  
+  // 타입 에러를 해결하기 위해 추가된 필드들
+  desiredJobRole: 'Frontend',
+  techStacks: ['React', 'TypeScript', 'Next.js'],
+  resumes: [], 
+
   analysisRecords: [
     {
       recordId: '8e2fd5b6-1bb6-4e21-9c48-1d22b7b50c2d',
