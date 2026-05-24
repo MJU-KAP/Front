@@ -2,6 +2,7 @@ import { isAxiosError } from 'axios';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { saveUserPreferences } from '../../apis/profileApi';
+import { fetchMyPage } from '../../apis/userApi'; // ✨ 추가된 API 임포트
 import NextPlanLogo from '../../components/brand/NextPlanLogo';
 import Toast from '../../components/Toast';
 
@@ -39,7 +40,6 @@ type TechCatalogItem = {
   category: string;
 };
 
-/** 검색·결과 목록용 (이름 + 카테고리 — Skill-based Roadmaps 기준) */
 const TECH_CATALOG: TechCatalogItem[] = [
   // 언어
   { name: 'JavaScript', category: '언어' },
@@ -145,7 +145,13 @@ export default function ProfileSetupPage() {
   const [jobRole, setJobRole] = useState<string>(JOB_OPTIONS[0]);
   const [jobDropdownOpen, setJobDropdownOpen] = useState(false);
   const jobSelectRef = useRef<HTMLDivElement>(null);
+  
+  const [selectedStacks, setSelectedStacks] = useState<string[]>([]);
+  const [stackQuery, setStackQuery] = useState('');
+  
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isInitialLoading, setIsInitialLoading] = useState(true); // 데이터 불러오는 상태
+  
   const [toast, setToast] = useState({
     show: false,
     title: '',
@@ -164,6 +170,29 @@ export default function ProfileSetupPage() {
     []
   );
 
+  // 기존 사용자 데이터가 있다면 불러와서 세팅
+  useEffect(() => {
+    async function loadExistingData() {
+      try {
+        const response = await fetchMyPage();
+        if (response) {
+          if (response.desiredJobRole) {
+            setJobRole(response.desiredJobRole);
+          }
+          if (response.techStacks && response.techStacks.length > 0) {
+            setSelectedStacks(response.techStacks);
+          }
+        }
+      } catch (error) {
+        // 첫 가입이거나 에러 발생 시 무시하고 기본값 사용
+        console.error('기존 데이터를 불러오지 못했습니다.', error);
+      } finally {
+        setIsInitialLoading(false);
+      }
+    }
+    void loadExistingData();
+  }, []);
+
   useEffect(() => {
     if (!jobDropdownOpen) return;
     const close = (e: MouseEvent) => {
@@ -175,11 +204,7 @@ export default function ProfileSetupPage() {
     return () => document.removeEventListener('mousedown', close);
   }, [jobDropdownOpen]);
 
-  const [selectedStacks, setSelectedStacks] = useState<string[]>([]);
-  const [stackQuery, setStackQuery] = useState('');
-
   const canSubmit = selectedStacks.length >= 1 && !isSubmitting;
-
   const selectedSet = useMemo(() => new Set(selectedStacks), [selectedStacks]);
 
   const filteredCatalog = useMemo(() => {
@@ -215,7 +240,7 @@ export default function ProfileSetupPage() {
         desiredJobRole: jobRole,
         techStacks: selectedStacks,
       });
-      navigate('/', { replace: true });
+      navigate('/mypage', { replace: true }); // 완료 후 마이페이지로 이동하게 수정 가능
     } catch (error) {
       showToast('저장 실패', getSubmitErrorMessage(error));
     } finally {
@@ -226,6 +251,14 @@ export default function ProfileSetupPage() {
   const handleSkipLater = () => {
     navigate('/', { replace: true });
   };
+
+  if (isInitialLoading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-zinc-100">
+        <p className="text-sm text-zinc-500">프로필 정보를 불러오는 중...</p>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-zinc-100 px-4 py-10 text-zinc-900">
@@ -242,7 +275,6 @@ export default function ProfileSetupPage() {
             더 정확한 AI 분석을 위해 기본 정보를 입력해주세요
           </p>
 
-          {/* 스테퍼 */}
           <div className="mt-10 flex items-center justify-center gap-2 sm:gap-4">
             <div className="flex flex-col items-center gap-1.5">
               <span className="flex h-9 w-9 items-center justify-center rounded-full border border-zinc-200 bg-zinc-100 text-sm font-bold text-zinc-400">
@@ -259,7 +291,6 @@ export default function ProfileSetupPage() {
             </div>
           </div>
 
-          {/* 희망 직군 — 커스텀 단일 선택 (화살표 + 목록 내 체크) */}
           <div className="mt-10" ref={jobSelectRef}>
             <div className="mb-2 flex items-center gap-1.5">
               <span id="job-role-label" className="text-sm font-bold text-zinc-900">
@@ -323,7 +354,6 @@ export default function ProfileSetupPage() {
             </div>
           </div>
 
-          {/* 기술 스택 */}
           <div className="mt-8">
             <div className="mb-1 flex flex-wrap items-baseline justify-between gap-2">
               <span className="text-sm font-bold text-zinc-900">기술 스택</span>
@@ -335,7 +365,6 @@ export default function ProfileSetupPage() {
               기술을 입력하면 연관 검색어가 표시됩니다 (최대 {MAX_STACK}개)
             </p>
 
-            {/* 선택된 태그: flex-wrap */}
             <div
               className="mb-3 flex min-h-[2.75rem] flex-wrap gap-2 rounded-2xl border border-dashed border-zinc-200 bg-zinc-50/80 p-3"
               aria-label="선택된 기술 스택"
@@ -362,7 +391,6 @@ export default function ProfileSetupPage() {
               )}
             </div>
 
-            {/* 검색 입력 */}
             <div className="relative">
               <span
                 className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-zinc-400"
@@ -381,7 +409,6 @@ export default function ProfileSetupPage() {
               />
             </div>
 
-            {/* 검색 결과 */}
             {stackQuery.trim().length > 0 && (
               <div
                 className="mt-2 overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-sm"

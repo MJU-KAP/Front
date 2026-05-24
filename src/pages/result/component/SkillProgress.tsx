@@ -10,24 +10,33 @@ function ProgressRow({
   const textColor = index % 2 === 0 ? "text-emerald-500" : "text-orange-500";
 
   return (
-    <div className={`flex items-center text-sm transition-all duration-150 ${isDimmed ? "opacity-30" : "opacity-100"} ${isHovered ? "scale-[1.02]" : ""}`}>
-      <div className={`w-28 font-medium transition-colors ${isHovered ? "text-zinc-900 font-bold" : "text-zinc-700"}`}>
+
+    <div className={`flex items-center text-sm transition-all duration-150 ${isDimmed ? "opacity-30" : "opacity-100"}`}>
+
+      <div className={`w-28 shrink-0 font-bold transition-colors ${isHovered ? "text-zinc-900" : "text-zinc-500"}`}>
         {skill.name}
       </div>
       
-      <div className="flex-1 h-2.5 bg-zinc-100 rounded-full overflow-hidden mx-4 relative">
+      <div className={`flex-1 h-3 rounded-md mx-4 relative overflow-hidden ${
+        skill.isLacking 
+          ? "border-2 border-dashed border-zinc-300 bg-transparent" 
+          : "bg-zinc-100"
+      }`}>
         <motion.div 
           initial={{ width: `${skill.score}%` }}
           animate={{ width: `${displayScore}%` }}
           transition={{ duration: 0.2, ease: "easeOut" }}
-          className={`absolute top-0 left-0 h-full rounded-full transition-colors ${baseColor}`}
+          className={`absolute top-0 left-0 h-full transition-colors ${baseColor}`}
         />
       </div>
-      
-      <div className={`w-16 text-right font-bold transition-colors ${isHovered ? textColor : 'text-zinc-500'}`}>
-        {displayScore}%
-        {isBonus && <span className="text-xs ml-1 text-orange-400 font-black">↑</span>}
+
+      <div className={`w-20 shrink-0 flex items-center justify-end font-bold transition-colors ${isHovered ? textColor : 'text-zinc-500'}`}>
+        <span className="w-12 inline-block text-right tabular-nums">{displayScore}%</span>
+        <span className="w-4 inline-block text-center ml-1 text-xs text-orange-400 font-black">
+          {isBonus ? '↑' : ''}
+        </span>
       </div>
+
     </div>
   );
 }
@@ -39,6 +48,8 @@ interface Props {
 }
 
 export default function SkillProgress({ skills, hoveredSkill, hoveredPlanData }: Props) {
+  if (!skills || skills.length === 0) return null;
+
   return (
     <div className="bg-white rounded-3xl p-8 border border-zinc-200 shadow-sm">
       <div className="flex flex-col gap-5">

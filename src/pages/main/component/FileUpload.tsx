@@ -2,8 +2,11 @@ import { useState, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Toast from '../../../components/Toast';
 import { useAuthStore } from '../../../store/authStore';
+import { api } from '../../../apis/api'; 
+import LoadingScreen from '../../result/component/LoadingScreen'; 
 
 const MAX_FILE_SIZE = 100 * 1024 * 1024;
+const ALLOWED_EXTENSIONS = ['pdf', 'docx', 'txt', 'png', 'jpg', 'jpeg'];
 
 export default function FileUpload() {
   const isLoggedIn = useAuthStore((state) => state.isLoggedIn);
@@ -12,6 +15,8 @@ export default function FileUpload() {
   const [isDrag, setIsDrag] = useState(false);
   const [files, setFiles] = useState<File[]>([]);
   const inputRef = useRef<HTMLInputElement>(null);
+  
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
 
   const [toast, setToast] = useState({
     show: false,
@@ -38,6 +43,13 @@ export default function FileUpload() {
 
     const validFiles: File[] = [];
     Array.from(newFiles).forEach((file) => {
+      const fileExtension = file.name.split('.').pop()?.toLowerCase() || '';
+      
+      if (!ALLOWED_EXTENSIONS.includes(fileExtension)) {
+        triggerToast('지원하지 않는 형식', `${file.name}은 지원하지 않는 파일 형식입니다.`, '⚠️');
+        return;
+      }
+
       if (file.size <= MAX_FILE_SIZE) {
         validFiles.push(file);
       } else {
@@ -52,40 +64,63 @@ export default function FileUpload() {
     setFiles((prev) => prev.filter((_, index) => index !== indexToRemove));
   }, []);
 
-  const handleAnalyze = useCallback(() => {
+  const handleAnalyze = useCallback(async () => {
     if (!isLoggedIn) {
       triggerToast('로그인 필요', '로그인 후 분석 기능을 이용할 수 있습니다.', '🔒');
       return;
     }
     
-    // 예시: 분석 아이디 123으로 이동 처리
-    const mockAnalysisId = "123";
-    navigate(`/result/${mockAnalysisId}`);
-  }, [isLoggedIn, triggerToast, navigate]);
+    if (files.length === 0) return;
 
-  const handleDragOver = useCallback((e: React.DragEvent) => {
-    e.preventDefault();
-    setIsDrag(true);
-  }, []);
+    try {
+      setIsAnalyzing(true);
+      
+      const formData = new FormData();
+      files.forEach((file) => {
+        formData.append('files', file); 
+      });
 
-  const handleDragLeave = useCallback(() => {
-    setIsDrag(false);
-  }, []);
+      const response = await api.post('/api/fileupload', formData, {
+        transformRequest: [
+          (data, headers) => {
+            delete headers['Content-Type'];
+            delete headers['content-type'];
+            return data;
+          },
+        ],
+      });
 
-  const handleDrop = useCallback((e: React.DragEvent) => {
-    e.preventDefault();
-    setIsDrag(false);
-    if (e.dataTransfer.files) {
-      onFileChange(e.dataTransfer.files);
+      const analysisId = response.data.analysisId || response.data.id || '123';
+      
+      navigate(`/result/${analysisId}`);
+
+    } catch (error) {
+      console.error("파일 업로드 실패:", error);
+      triggerToast('업로드 실패', '파일 업로드 중 오류가 발생했습니다.', '❌', 'warning');
     }
-  }, [onFileChange]);
+  }, [isLoggedIn, files, triggerToast, navigate]);
 
+  const handleDragOver = useCallback((e: React.DragEvent) => { e.preventDefault(); setIsDrag(true); }, []);
+  const handleDragLeave = useCallback(() => { setIsDrag(false); }, []);
+  const handleDrop = useCallback((e: React.DragEvent) => {
+    e.preventDefault(); setIsDrag(false);
+    if (e.dataTransfer.files) onFileChange(e.dataTransfer.files);
+  }, [onFileChange]);
   const handleInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     onFileChange(e.target.files);
-    if (e.target) {
-      e.target.value = ''; 
-    }
+    if (e.target) e.target.value = ''; 
   }, [onFileChange]);
+
+  if (isAnalyzing) {
+    return (
+      <div className="fixed inset-0 z-[9999] w-screen h-screen bg-[#121212] overflow-y-auto">
+        <LoadingScreen 
+          isDataReady={false} 
+          onComplete={() => {}} 
+        />
+      </div>
+    );
+  }
 
   return (
     <div className="w-full max-w-4xl mx-auto p-4 space-y-6">
@@ -98,20 +133,13 @@ export default function FileUpload() {
           isDrag ? 'border-orange-500 bg-orange-500/10' : 'border-zinc-700 bg-zinc-900/30'
         } ${files.length > 0 ? 'p-8' : 'p-20'}`}
       >
-        <input 
-          type="file" 
-          ref={inputRef} 
-          onChange={handleInputChange} 
-          className="hidden" 
-          multiple 
-        />
-        
+        <input type="file" ref={inputRef} onChange={handleInputChange} className="hidden" multiple />
         {files.length === 0 ? (
           <div className="flex flex-col items-center gap-6 pointer-events-none text-center">
             <div className="w-16 h-16 bg-zinc-800 rounded-full flex items-center justify-center text-zinc-400 text-2xl">📄</div>
             <div>
               <p className="text-xl font-semibold text-white">분석할 파일을 드래그하여 업로드하세요</p>
-              <p className="text-zinc-500 text-sm mt-2">최대 100MB (여러 파일 선택 가능)</p>
+              <p className="text-zinc-500 text-sm mt-2">최대 100MB (PDF, DOCX, TXT, 이미지 가능)</p>
             </div>
             <button className="mt-4 px-8 py-3 bg-orange-500 text-white font-bold rounded-full transition-transform active:scale-95">
               파일 선택하기
@@ -123,7 +151,6 @@ export default function FileUpload() {
               <h3 className="text-white font-medium">선택된 파일 ({files.length})</h3>
               <p className="text-orange-500 text-sm font-bold">파일 추가하기</p>
             </div>
-            
             <div className="grid grid-cols-1 gap-3 max-h-[350px] overflow-y-auto pr-2 custom-scrollbar">
               {files.map((file, index) => (
                 <div key={`${file.name}-${index}`} onClick={(e) => e.stopPropagation()} className="flex items-center justify-between bg-zinc-800/80 border border-zinc-700 p-4 rounded-2xl group">
@@ -134,12 +161,7 @@ export default function FileUpload() {
                       <span className="text-zinc-500 text-xs">{(file.size / (1024 * 1024)).toFixed(2)} MB</span>
                     </div>
                   </div>
-                  <button 
-                    onClick={() => handleRemoveFile(index)} 
-                    className="w-10 h-10 flex items-center justify-center rounded-xl bg-zinc-900/50 text-zinc-500 hover:text-red-400 transition-colors"
-                  >
-                    ✕
-                  </button>
+                  <button onClick={() => handleRemoveFile(index)} className="w-10 h-10 flex items-center justify-center rounded-xl bg-zinc-900/50 text-zinc-500 hover:text-red-400 transition-colors">✕</button>
                 </div>
               ))}
             </div>
@@ -156,14 +178,7 @@ export default function FileUpload() {
         </button>
       )}
 
-      <Toast 
-        show={toast.show} 
-        onClose={closeToast}
-        title={toast.title}
-        description={toast.description}
-        icon={toast.icon}
-        type={toast.type}
-      />
+      <Toast show={toast.show} onClose={closeToast} title={toast.title} description={toast.description} icon={toast.icon} type={toast.type} />
     </div>
   );
 }

@@ -10,35 +10,34 @@ interface LoadingScreenProps {
 export default function LoadingScreen({ isDataReady, onComplete }: LoadingScreenProps) {
   const { trendingRoles, isFetching } = useJobTrends();
   
-  const [internalProgress, setInternalProgress] = useState(0);
-  const [elapsedTime, setElapsedTime] = useState(0);
+  const [progress, setProgress] = useState(0);
 
   useEffect(() => {
-    const startTime = Date.now();
-    const interval = setInterval(() => {
-      const now = Date.now();
-      const elapsed = now - startTime;
-      setElapsedTime(elapsed);
 
-      setInternalProgress(prev => {
-        if (prev >= 98) return 93; 
+    if (isDataReady) {
+      return;
+    }
+
+    const interval = setInterval(() => {
+      setProgress(prev => {
+        if (prev >= 90) return 90; 
         
         const isPause = Math.random() < 0.4; 
         if (isPause) return prev;
 
         const jump = Math.floor(Math.random() * 5) + 1; 
-        return Math.min(prev + jump, 98);
+        return Math.min(prev + jump, 90);
       });
     }, 600);
 
     return () => clearInterval(interval);
-  }, []);
+  }, [isDataReady]);
 
-  const isDone = elapsedTime >= 15000 && isDataReady;
-  const progress = isDone ? 100 : internalProgress;
+  const isDone = isDataReady;
+  const displayProgress = isDataReady ? 100 : progress;
 
   return (
-    <div className="min-h-screen bg-[#121212] text-white flex flex-col items-center justify-center pt-16 pb-10 px-4 font-sans">
+    <div className="w-full h-full min-h-screen bg-[#121212] text-white flex flex-col items-center justify-center pt-24 pb-20 px-4 font-sans relative">
       
       <div className="absolute top-10 text-xl font-bold tracking-wider">
         Next<span className="text-orange-500">Plan</span>
@@ -83,7 +82,7 @@ export default function LoadingScreen({ isDataReady, onComplete }: LoadingScreen
         <div className="w-full max-w-md h-1.5 bg-zinc-800 rounded-full overflow-hidden relative">
           <div 
             className="h-full bg-orange-500 transition-all duration-300 ease-out"
-            style={{ width: `${progress}%` }}
+            style={{ width: `${displayProgress}%` }} 
           />
         </div>
 

@@ -9,12 +9,23 @@ export default function BoardDetailPage() {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    if (!id) return;
+    window.scrollTo(0, 0);
+  }, []);
+
+  useEffect(() => {
+    if (!id || !category) return;
+
+    let targetCategory = '';
+    if (category === 'activities') { targetCategory = 'activity'; } 
+    else if (category === 'competitions') { targetCategory = 'contest'; } 
+    else if (category === 'clubs') { targetCategory = 'club'; }
+
+    if (!targetCategory) return;
 
     const loadDetail = async () => {
       try {
         setIsLoading(true);
-        const data = await fetchBoardDetail(id);
+        const data = await fetchBoardDetail(id, targetCategory);
         if (data) setDetailData(data);
       } catch (error) {
         console.error('상세 데이터 로드 실패:', error);
@@ -23,7 +34,7 @@ export default function BoardDetailPage() {
       }
     };
     loadDetail();
-  }, [id]);
+  }, [id, category]);
 
   if (category !== 'activities' && category !== 'competitions' && category !== 'clubs') {
     return <Navigate to="/" replace />;

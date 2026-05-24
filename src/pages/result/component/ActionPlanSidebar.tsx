@@ -9,6 +9,13 @@ function ActionPlanCard({
 }: { 
   plan: ActionPlan, i: number, isRelated: boolean, isDimmed: boolean, setHoveredPlan: (id: number | null) => void 
 }) {
+
+  const handleCardClick = () => {
+    if (plan.url) {
+      window.open(plan.url, '_blank', 'noopener,noreferrer');
+    }
+  };
+
   return (
     <motion.div 
       initial={{ opacity: 0, y: 10 }}
@@ -16,6 +23,7 @@ function ActionPlanCard({
       transition={{ duration: 0.3, delay: i * 0.05 }}
       onMouseEnter={() => setHoveredPlan(plan.id)}
       onMouseLeave={() => setHoveredPlan(null)}
+      onClick={handleCardClick} // 클릭 시 이동 기능 유지
       className={`p-5 rounded-2xl border transition-all duration-150 cursor-pointer
         ${isRelated ? "bg-orange-50 border-orange-400 shadow-md scale-[1.02]" : "bg-zinc-50 border-zinc-100 hover:border-orange-200"}
         ${isDimmed ? "opacity-30" : "opacity-100"}
@@ -23,14 +31,14 @@ function ActionPlanCard({
     >
       <div className="flex items-center gap-2 mb-3">
         <span className="text-xs font-bold px-2.5 py-1 rounded-md text-orange-500 bg-white shadow-sm">
-          {plan.category}
+          {plan.category || "활동"}
         </span>
         <span className={`text-xs font-bold px-2.5 py-1 rounded-md ${isRelated ? "text-white bg-orange-500" : "text-emerald-500 bg-emerald-50"}`}>
           {plan.skillTarget}
         </span>
       </div>
       <h3 className="font-bold text-zinc-800 text-sm mb-1.5">{plan.title}</h3>
-      <p className="text-xs text-zinc-500 mb-4 leading-relaxed">{plan.desc}</p>
+      <p className="text-xs text-zinc-500 mb-4 leading-relaxed line-clamp-2">{plan.desc}</p>
       <p className="text-xs text-zinc-400 font-medium">{plan.deadline}</p>
     </motion.div>
   );
@@ -48,8 +56,6 @@ export default function ActionPlanSidebar({ plans, insight, hoveredSkill, hovere
   const [isModalOpen, setIsModalOpen] = useState(false);
   const navigate = useNavigate();
 
-  const previewText = insight;
-
   return (
     <>
       <div className="bg-white rounded-3xl p-8 border border-zinc-200 shadow-sm sticky top-8 transition-all">
@@ -59,9 +65,13 @@ export default function ActionPlanSidebar({ plans, insight, hoveredSkill, hovere
         </div>
 
         <div className="flex flex-col gap-4 mb-8">
-          {plans.map((plan, i) => {
+          {plans?.map((plan, i) => {
+            const target = plan.skillTarget || "";
+            const title = plan.title || "";
+            const desc = plan.desc || "";
+            
             const isRelated = hoveredSkill 
-              ? (plan.skillTarget.includes(hoveredSkill) || plan.title.includes(hoveredSkill) || plan.desc.includes(hoveredSkill))
+              ? (target.includes(hoveredSkill) || title.includes(hoveredSkill) || desc.includes(hoveredSkill))
               : hoveredPlan === plan.id;
               
             const isDimmed = (hoveredSkill !== null && !isRelated) || (hoveredPlan !== null && !isRelated);
@@ -84,7 +94,7 @@ export default function ActionPlanSidebar({ plans, insight, hoveredSkill, hovere
           
           <div className="mb-6">
             <p className="text-sm text-zinc-600 leading-relaxed line-clamp-3">
-              {previewText}
+              {insight || "분석된 인사이트가 없습니다."}
             </p>
             <div className="mt-2 text-left">
               <button 

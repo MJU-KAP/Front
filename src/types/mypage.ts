@@ -9,10 +9,21 @@ export type AnalysisRecord = {
   tags?: string[];
 };
 
+export type Resume = {
+  resumeId: number;
+  fileName: string;
+  fileUrl: string;
+};
+
 export type MyPageResponse = {
   nickname: string;
-  email: string;
+  email: string | null;
   joinedAt: string;
   analysisCount: number;
+  resumes: Resume[];
   analysisRecords: AnalysisRecord[];
+  
+  // 새로 추가된 프로필 설정 필드
+  desiredJobRole: string | null;
+  techStacks: string[];
 };

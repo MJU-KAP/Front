@@ -21,7 +21,22 @@ export interface RawCrawlItem {
   recruitCount?: string | number;
 }
 
-// D-Day 계산
+export interface PaginatedResponse {
+  count: number;
+  items: RawCrawlItem[];
+  page: number;
+  size: number;
+  totalCount: number;
+  totalPages: number;
+  hasNext: boolean;
+}
+
+export interface FetchBoardItemsResult {
+  items: BoardItem[];
+  hasNext: boolean;
+  totalCount: number;
+}
+
 const calculateDday = (endDateStr?: string) => {
   if (!endDateStr) return 'D-?';
   try {
@@ -37,43 +52,71 @@ const calculateDday = (endDateStr?: string) => {
   }
 };
 
-export const fetchBoardItems = async (targetCategory: string): Promise<BoardItem[]> => {
-  const response = await api.get('/api/crawl');
-  const rawItems: RawCrawlItem[] = response.data?.items || response.data?.data || [];
+export const fetchBoardItems = async (
+  targetCategory: string,
+  page: number = 1,
+  size: number = 30
+): Promise<FetchBoardItemsResult> => {
+  const response = await api.get<PaginatedResponse>('/api/crawl', {
+    params: {
+      category: targetCategory,
+      page: page,
+      size: size
+    }
+  });
 
-  return rawItems
-    .filter((item) => item.category === targetCategory)
-    .map((item) => ({
-      id: item.extId,
-      title: item.title || '제목 없음',
-      host: item.companyType || '주최자 정보 없음',
-      dDay: calculateDday(item.recruitEndDate),
-      thumbnailUrl: item.imageUri,
-      mainTags: item.requiredSkills && item.requiredSkills.length > 0 
-        ? item.requiredSkills.slice(0, 2) 
-        : undefined,
-    }));
-};
+  const data = response.data;
+  const rawItems = data.items || [];
 
-export const fetchBoardDetail = async (id: string): Promise<BoardDetailData | null> => {
-  const response = await api.get('/api/crawl');
-  const rawItems: RawCrawlItem[] = response.data?.items || response.data?.data || [];
-  
-  const foundItem = rawItems.find((item) => String(item.extId) === id);
-  if (!foundItem) return null;
+  const items = rawItems.map((item) => ({
+    id: item.extId,
+    title: item.title || '제목 없음',
+    host: item.companyType || '주최자 정보 없음',
+    dDay: calculateDday(item.recruitEndDate),
+    thumbnailUrl: item.imageUri,
+    mainTags: item.requiredSkills && item.requiredSkills.length > 0 
+      ? item.requiredSkills.slice(0, 2) 
+      : undefined,
+  }));
 
   return {
-    id: foundItem.extId,
-    title: foundItem.title || '제목 없음',
-    host: foundItem.companyType || '주최자 정보 없음',
-    dDay: calculateDday(foundItem.recruitEndDate),
-    thumbnailUrl: foundItem.imageUri,
-    period: `${foundItem.activityStartDate || ''} ~ ${foundItem.activityEndDate || ''}`,
-    recruitPeriod: `${foundItem.recruitStartDate || ''} ~ ${foundItem.recruitEndDate || ''}`,
-    tags: foundItem.requiredSkills || [],
-    description: foundItem.result || foundItem.description || '상세 정보가 없습니다.',
-    originUrl: foundItem.originUrl || foundItem.homepageUrl || '',
-    region: foundItem.activityRegion || '정보 없음',
-    recruitCount: foundItem.recruitCount || '제한없음',
+    items,
+    hasNext: data.hasNext,
+    totalCount: data.totalCount
   };
+};
+
+export const fetchBoardDetail = async (id: string, targetCategory: string): Promise<BoardDetailData | null> => {
+  try {
+    const response = await api.get<PaginatedResponse>('/api/crawl', {
+      params: {
+        category: targetCategory,
+        page: 1,
+        size: 1000, 
+      }
+    });
+    
+    const rawItems = response.data?.items || [];
+    const foundItem = rawItems.find((item) => String(item.extId) === id);
+    
+    if (!foundItem) return null;
+
+    return {
+      id: foundItem.extId,
+      title: foundItem.title || '제목 없음',
+      host: foundItem.companyType || '주최자 정보 없음',
+      dDay: calculateDday(foundItem.recruitEndDate),
+      thumbnailUrl: foundItem.imageUri,
+      period: `${foundItem.activityStartDate || ''} ~ ${foundItem.activityEndDate || ''}`,
+      recruitPeriod: `${foundItem.recruitStartDate || ''} ~ ${foundItem.recruitEndDate || ''}`,
+      tags: foundItem.requiredSkills || [],
+      description: foundItem.result || foundItem.description || '상세 정보가 없습니다.',
+      originUrl: foundItem.originUrl || foundItem.homepageUrl || '',
+      region: foundItem.activityRegion || '정보 없음',
+      recruitCount: foundItem.recruitCount || '제한없음',
+    };
+  } catch (error) {
+    console.error('상세 정보 조회 실패:', error);
+    return null;
+  }
 };
