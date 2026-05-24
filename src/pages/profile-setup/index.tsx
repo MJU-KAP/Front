@@ -1,5 +1,9 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { isAxiosError } from 'axios';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { saveUserPreferences } from '../../apis/profileApi';
 import NextPlanLogo from '../../components/brand/NextPlanLogo';
+import Toast from '../../components/Toast';
 
 const JOB_OPTIONS = [
   'Frontend',
@@ -123,10 +127,42 @@ function ChevronDownIcon({ className = '' }: { className?: string }) {
   );
 }
 
+function getSubmitErrorMessage(error: unknown): string {
+  if (isAxiosError(error)) {
+    const data = error.response?.data;
+    if (data && typeof data === 'object' && 'message' in data && typeof data.message === 'string') {
+      return data.message;
+    }
+    if (error.response?.status === 401) {
+      return '로그인이 필요합니다. 카카오 로그인 후 다시 시도해주세요.';
+    }
+  }
+  return '프로필 저장에 실패했습니다. 잠시 후 다시 시도해주세요.';
+}
+
 export default function ProfileSetupPage() {
+  const navigate = useNavigate();
   const [jobRole, setJobRole] = useState<string>(JOB_OPTIONS[0]);
   const [jobDropdownOpen, setJobDropdownOpen] = useState(false);
   const jobSelectRef = useRef<HTMLDivElement>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [toast, setToast] = useState({
+    show: false,
+    title: '',
+    description: '',
+    type: 'warning' as 'warning' | 'success' | 'info',
+  });
+
+  const closeToast = useCallback(() => {
+    setToast((prev) => ({ ...prev, show: false }));
+  }, []);
+
+  const showToast = useCallback(
+    (title: string, description: string, type: 'warning' | 'success' | 'info' = 'warning') => {
+      setToast({ show: true, title, description, type });
+    },
+    []
+  );
 
   useEffect(() => {
     if (!jobDropdownOpen) return;
@@ -139,13 +175,10 @@ export default function ProfileSetupPage() {
     return () => document.removeEventListener('mousedown', close);
   }, [jobDropdownOpen]);
 
-  const [selectedStacks, setSelectedStacks] = useState<string[]>([
-    'React',
-    'TypeScript',
-    'Next.js',
-    'Python',
-  ]);
+  const [selectedStacks, setSelectedStacks] = useState<string[]>([]);
   const [stackQuery, setStackQuery] = useState('');
+
+  const canSubmit = selectedStacks.length >= 1 && !isSubmitting;
 
   const selectedSet = useMemo(() => new Set(selectedStacks), [selectedStacks]);
 
@@ -168,6 +201,30 @@ export default function ProfileSetupPage() {
 
   const removeStack = (name: string) => {
     setSelectedStacks((prev) => prev.filter((s) => s !== name));
+  };
+
+  const handleComplete = async () => {
+    if (!canSubmit) {
+      showToast('입력을 확인해주세요', '희망 직군과 기술 스택을 1개 이상 선택해주세요.');
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      await saveUserPreferences({
+        desiredJobRole: jobRole,
+        techStacks: selectedStacks,
+      });
+      navigate('/', { replace: true });
+    } catch (error) {
+      showToast('저장 실패', getSubmitErrorMessage(error));
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleSkipLater = () => {
+    navigate('/', { replace: true });
   };
 
   return (
@@ -381,18 +438,31 @@ export default function ProfileSetupPage() {
 
           <button
             type="button"
-            className="mt-10 w-full rounded-full bg-orange-500 py-3.5 text-sm font-bold text-white shadow-lg shadow-orange-500/25 transition-colors hover:bg-orange-600 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-orange-500"
+            disabled={!canSubmit}
+            onClick={handleComplete}
+            className="mt-10 w-full rounded-full bg-orange-500 py-3.5 text-sm font-bold text-white shadow-lg shadow-orange-500/25 transition-colors hover:bg-orange-600 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-orange-500 disabled:cursor-not-allowed disabled:opacity-50"
           >
-            완료
+            {isSubmitting ? '저장 중…' : '완료'}
           </button>
           <button
             type="button"
-            className="mt-4 w-full text-center text-sm font-medium text-zinc-500 underline-offset-2 hover:text-zinc-700 hover:underline"
+            disabled={isSubmitting}
+            onClick={handleSkipLater}
+            className="mt-4 w-full text-center text-sm font-medium text-zinc-500 underline-offset-2 hover:text-zinc-700 hover:underline disabled:cursor-not-allowed disabled:opacity-50"
           >
             나중에 설정하기
           </button>
         </div>
       </div>
+
+      <Toast
+        show={toast.show}
+        onClose={closeToast}
+        title={toast.title}
+        description={toast.description}
+        type={toast.type}
+        icon={toast.type === 'success' ? '✓' : '⚠️'}
+      />
     </div>
   );
 }
