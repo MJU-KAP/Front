@@ -93,10 +93,6 @@ export default function FileUpload() {
       console.log(response.data);
 
       const analysisId = response.data.recordId || response.data.analysisId || response.data.id;
-      
-      if (!analysisId) {
-        alert("배포 서버가 준 데이터: " + JSON.stringify(response.data));
-      }
 
       navigate(`/result/${analysisId}`);
 

@@ -10,9 +10,7 @@ function ProgressRow({
   const textColor = index % 2 === 0 ? "text-emerald-500" : "text-orange-500";
 
   return (
-
     <div className={`flex items-center text-sm transition-all duration-150 ${isDimmed ? "opacity-30" : "opacity-100"}`}>
-
       <div className={`w-28 shrink-0 font-bold transition-colors ${isHovered ? "text-zinc-900" : "text-zinc-500"}`}>
         {skill.name}
       </div>
@@ -36,7 +34,6 @@ function ProgressRow({
           {isBonus ? '↑' : ''}
         </span>
       </div>
-
     </div>
   );
 }
@@ -64,7 +61,7 @@ export default function SkillProgress({ skills, hoveredSkill, hoveredPlanData }:
 
           return (
             <ProgressRow 
-              key={skill.name}
+              key={`${skill.name}-${index}`}
               skill={skill}
               index={index}
               isHovered={isHovered}
