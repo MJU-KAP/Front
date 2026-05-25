@@ -25,13 +25,11 @@ export default function ResultPage() {
     const fetchAnalysisData = async () => {
       try {
         const res = await api.get(`/api/analyze/result/${id}`);
-        
-        // 문자열로 넘어올 경우를 대비해 안전하게 JSON 파싱
+
         const parsed = typeof res.data.result === 'string' 
           ? JSON.parse(res.data.result) 
           : res.data.result;
 
-        console.log("파싱된 데이터 확인:", parsed); // 확인용 콘솔 로그
 
         if (isMounted) {
           const ownedSkills = (parsed.user_skills || []).map((s: ParsedSkill) => ({
@@ -71,8 +69,7 @@ export default function ResultPage() {
             totalOwned: parsed.user_skills?.length || 0,
             totalLacking: parsed.skill_gaps?.length || 0,
             totalScore: parsed.readiness_score || 0,
-            
-            // ai_insight 객체 안전하게 매핑
+
             insight: {
               strength: parsed.ai_insight?.strength || "분석된 강점 데이터가 없습니다.",
               improvement: parsed.ai_insight?.improvement || "분석된 보완점 데이터가 없습니다.",
