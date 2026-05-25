@@ -90,13 +90,18 @@ export default function FileUpload() {
         ],
       });
 
-      const analysisId = response.data.analysisId || response.data.id || '123';
+      const analysisId = response.data.analysisId || response.data.id;
       
+      if (!analysisId) {
+        throw new Error("서버 응답에 분석 ID가 포함되어 있지 않습니다.");
+      }
+
       navigate(`/result/${analysisId}`);
 
     } catch (error) {
       console.error("파일 업로드 실패:", error);
       triggerToast('업로드 실패', '파일 업로드 중 오류가 발생했습니다.', '❌', 'warning');
+      setIsAnalyzing(false); 
     }
   }, [isLoggedIn, files, triggerToast, navigate]);
 
