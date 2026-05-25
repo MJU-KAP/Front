@@ -1,4 +1,5 @@
 import axios, { AxiosError, type AxiosResponse, type InternalAxiosRequestConfig } from 'axios';
+import { useAuthStore } from '../store/authStore';
 
 // 무한 루프 방지를 위한 커스텀 타입
 interface CustomConfig extends InternalAxiosRequestConfig {
@@ -52,8 +53,12 @@ api.interceptors.response.use(
         return api(originalRequest);
 
       } catch (refreshError) {
-        localStorage.removeItem('accessToken');
-        window.location.href = '/login'; 
+        try {
+          useAuthStore.getState().logout();
+        } catch {
+          localStorage.removeItem('accessToken');
+        }
+        window.location.href = '/login';
         return Promise.reject(refreshError);
       }
     }
