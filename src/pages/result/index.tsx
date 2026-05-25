@@ -25,7 +25,13 @@ export default function ResultPage() {
     const fetchAnalysisData = async () => {
       try {
         const res = await api.get(`/api/analyze/result/${id}`);
-        const parsed = res.data.result; // JSON.parse(res.data.result);
+        
+        // 문자열로 넘어올 경우를 대비해 안전하게 JSON 파싱
+        const parsed = typeof res.data.result === 'string' 
+          ? JSON.parse(res.data.result) 
+          : res.data.result;
+
+        console.log("파싱된 데이터 확인:", parsed); // 확인용 콘솔 로그
 
         if (isMounted) {
           const ownedSkills = (parsed.user_skills || []).map((s: ParsedSkill) => ({
@@ -65,12 +71,21 @@ export default function ResultPage() {
             totalOwned: parsed.user_skills?.length || 0,
             totalLacking: parsed.skill_gaps?.length || 0,
             totalScore: parsed.readiness_score || 0,
-            insight: parsed.insight || "분석 결과를 확인하세요."
+            
+            // ai_insight 객체 안전하게 매핑
+            insight: {
+              strength: parsed.ai_insight?.strength || "분석된 강점 데이터가 없습니다.",
+              improvement: parsed.ai_insight?.improvement || "분석된 보완점 데이터가 없습니다.",
+              growth_direction: parsed.ai_insight?.growth_direction || "분석된 성장 방향 데이터가 없습니다.",
+              market_fit: parsed.ai_insight?.market_fit || "분석된 시장 적합도 데이터가 없습니다.",
+              summary: parsed.ai_insight?.summary || "분석 결과를 확인하세요."
+            }
           };
           
           setData(formattedData);
         }
-      } catch {
+      } catch (err) {
+        console.error("데이터 불러오기 실패:", err);
         if (isMounted) setError("분석 결과를 불러오는데 실패했습니다."); 
       }
     };

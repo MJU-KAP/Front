@@ -48,8 +48,16 @@ export interface AnalysisData {
   totalLacking: number;
   totalScore: number;
   actionPlans: ActionPlan[];
-  insight: string;
+  insight: AiInsightData;
   lackingSkills?: string[];
+}
+
+export interface AiInsightData {
+  strength: string;
+  improvement: string;
+  growth_direction: string;
+  market_fit: string;
+  summary: string;
 }
 
 export interface ParsedSkill {

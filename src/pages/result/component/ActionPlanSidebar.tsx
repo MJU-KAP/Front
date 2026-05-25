@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import type { ActionPlan } from '../type';
+// AiInsightData 타입을 추가로 불러옵니다.
+import type { ActionPlan, AiInsightData } from '../type';
 import InsightModal from './InsightModal';
 
 function ActionPlanCard({ 
@@ -46,7 +47,7 @@ function ActionPlanCard({
 
 interface Props {
   plans: ActionPlan[];
-  insight: string;
+  insight: AiInsightData; // string에서 AiInsightData 객체 타입으로 변경
   hoveredSkill: string | null;
   hoveredPlan: number | null;
   setHoveredPlan: (id: number | null) => void;
@@ -94,7 +95,8 @@ export default function ActionPlanSidebar({ plans, insight, hoveredSkill, hovere
           
           <div className="mb-6">
             <p className="text-sm text-zinc-600 leading-relaxed line-clamp-3">
-              {insight || "분석된 인사이트가 없습니다."}
+              {/* 수정됨: 객체 전체를 그릴 수 없으므로 insight.summary를 출력 */}
+              {insight?.summary || "분석된 인사이트가 없습니다."}
             </p>
             <div className="mt-2 text-left">
               <button 
@@ -117,7 +119,8 @@ export default function ActionPlanSidebar({ plans, insight, hoveredSkill, hovere
 
       <InsightModal 
         isOpen={isModalOpen} 
-        onClose={() => setIsModalOpen(false)} 
+        onClose={() => setIsModalOpen(false)}
+        insight={insight} // 수정됨: 모달 컴포넌트에 insight 객체 전달
       />
     </>
   );
