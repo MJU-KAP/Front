@@ -21,7 +21,7 @@ export default function AnalysisHistoryCard({ record }: AnalysisHistoryCardProps
       <div className="min-w-0 flex-1">
         <h3 className="text-base font-bold text-zinc-900 sm:text-lg">{record.inputSummary}</h3>
         <p className="mt-1.5 text-sm text-zinc-500">{metaParts.join(' · ')}</p>
-        {record.tags && record.tags.length > 0 && (
+        {record.tags.length > 0 && (
           <ul className="mt-3 flex flex-wrap gap-2" aria-label="관련 기술">
             {record.tags.map((tag, index) => (
               <li
