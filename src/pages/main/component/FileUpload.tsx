@@ -81,9 +81,13 @@ export default function FileUpload() {
       });
 
       const response = await api.post('/api/fileupload', formData, {
-        headers: {
-          'Content-Type': 'multipart/form-data',
-        },
+        transformRequest: [
+          (data, headers) => {
+            delete headers['Content-Type'];
+            delete headers['content-type'];
+            return data;
+          },
+        ],
       });
 
       console.log(response.data);
