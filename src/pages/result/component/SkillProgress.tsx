@@ -9,7 +9,6 @@ function ProgressRow({
   const isMet = skill.score >= skill.required_score;
   const baseColor = isMet ? "bg-emerald-500" : "bg-orange-500";
   const textColor = isMet ? "text-emerald-500" : "text-orange-500";
-
   return (
     <div 
       className={`flex items-center text-sm transition-all duration-150 ${isDimmed ? "opacity-30" : "opacity-100"}`}
@@ -45,7 +44,7 @@ function ProgressRow({
           />
         )}
 
-        {skill.score > 0 && skill.score < skill.required_score && (
+        {skill.score > 0 && skill.required_score > 0 && (
           <div 
             style={{ left: 0, width: `${skill.required_score}%` }}
             className="absolute top-0 h-full border-r-2 border-dashed border-zinc-600/70 z-30 pointer-events-none"
