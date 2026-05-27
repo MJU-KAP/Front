@@ -55,13 +55,15 @@ const calculateDday = (endDateStr?: string) => {
 export const fetchBoardItems = async (
   targetCategory: string,
   page: number = 1,
-  size: number = 30
+  size: number = 30,
+  sort: string = 'deadline'
 ): Promise<FetchBoardItemsResult> => {
   const response = await api.get<PaginatedResponse>('/api/crawl', {
     params: {
       category: targetCategory,
       page: page,
-      size: size
+      size: size,
+      sort: sort
     }
   });
 

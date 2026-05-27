@@ -12,6 +12,7 @@ export default function BoardPage() {
   const [page, setPage] = useState(1);
   const [totalCount, setTotalCount] = useState(0);
   const [hasNext, setHasNext] = useState(false);
+  const [sort, setSort] = useState('deadline'); 
 
   let targetCategory = '';
   if (category === 'activities') { targetCategory = 'activity'; } 
@@ -23,7 +24,7 @@ export default function BoardPage() {
     
     setIsLoading(true);
     try {
-      const result = await fetchBoardItems(targetCategory, currentPage, 30);
+      const result = await fetchBoardItems(targetCategory, currentPage, 30, sort);
       
       setItems((prev) => (isInitial ? result.items : [...prev, ...result.items]));
       setHasNext(result.hasNext);
@@ -33,14 +34,14 @@ export default function BoardPage() {
     } finally {
       setIsLoading(false);
     }
-  }, [targetCategory]);
+  }, [targetCategory, sort]);
 
   useEffect(() => {
     if (!targetCategory) return;
-    
+    setItems([]);
     setPage(1);
     loadData(1, true);
-  }, [category, targetCategory, loadData]);
+  }, [category, targetCategory, sort, loadData]);
 
   const handleLoadMore = useCallback(() => {
     if (hasNext && !isLoading) {
@@ -63,6 +64,8 @@ export default function BoardPage() {
         hasNext={hasNext}
         totalCount={totalCount}
         onLoadMore={handleLoadMore}
+        sort={sort}
+        onSortChange={setSort}
       />
     </div>
   );

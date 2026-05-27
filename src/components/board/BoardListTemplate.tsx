@@ -8,6 +8,8 @@ interface BoardListTemplateProps {
   hasNext?: boolean;
   totalCount?: number;
   onLoadMore: () => void;
+  sort: string;
+  onSortChange: (sort: string) => void;
 }
 
 export default function BoardListTemplate({ 
@@ -16,7 +18,9 @@ export default function BoardListTemplate({
   isLoading = false,
   hasNext = false,
   totalCount = 0,
-  onLoadMore
+  onLoadMore,
+  sort,
+  onSortChange
 }: BoardListTemplateProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const observerRef = useRef<HTMLDivElement | null>(null);
@@ -63,6 +67,29 @@ export default function BoardListTemplate({
         <span className="font-medium">
           전체 검색결과 <span className="text-orange-500 font-bold">{totalCount}</span>건
         </span>
+
+        <div className="flex items-center gap-2 bg-white p-1 rounded-full border border-gray-200 shadow-sm">
+          <button
+            onClick={() => onSortChange('deadline')}
+            className={`px-4 py-1.5 rounded-full text-sm transition-all duration-200 ease-in-out ${
+              sort === 'deadline'
+                ? 'bg-orange-500 text-white font-medium shadow-md'
+                : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'
+            }`}
+          >
+            마감 임박순
+          </button>
+          <button
+            onClick={() => onSortChange('deadline_desc')}
+            className={`px-4 py-1.5 rounded-full text-sm transition-all duration-200 ease-in-out ${
+              sort === 'deadline_desc'
+                ? 'bg-orange-500 text-white font-medium shadow-md'
+                : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'
+            }`}
+          >
+            마감 여유순
+          </button>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-5 items-start">
