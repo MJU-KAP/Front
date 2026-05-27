@@ -26,7 +26,6 @@ function App() {
       <Routes>
         {/* 전역 헤더 없음 */}
         <Route path="/auth/kakao/callback" element={<KakaoCallback />} />
-        <Route path="/login" element={<LoginPage />} />
 
         <Route element={<ProtectedRoute isAuthenticated={isLoggedIn} />}>
           <Route path="/profile-setup" element={<ProfileSetupPage />} />
@@ -34,6 +33,7 @@ function App() {
 
         <Route element={<AppLayout />}>
           <Route path="/" element={<MainPage />} />
+          <Route path="/login" element={<LoginPage />} />
           <Route path="/main" element={<MainPage />} />
           <Route path="/board/:category" element={<BoardPage />} />
           <Route path="/board/:category/:id" element={<BoardDetailPage />} />
