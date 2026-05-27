@@ -1,5 +1,5 @@
 import { useState, useEffect, type JSX } from 'react';
-import { fetchJobTrends, type JobTrendData } from '../apis/jobs';
+import { /* fetchJobTrends,*/ type JobTrendData } from '../apis/jobs';
 
 export interface ProcessedJobRole extends JobTrendData {
   rank: string;
@@ -87,6 +87,7 @@ export const useJobTrends = () => {
         setIsFetching(true);
         let rawData: JobTrendData[] = [];
 
+        /*
         try {
           // API 호출 시도
           const apiData = await fetchJobTrends();
@@ -105,7 +106,10 @@ export const useJobTrends = () => {
           console.warn('API 연동 실패, 더미 데이터를 표시합니다.', apiError);
           rawData = FALLBACK_DUMMY_DATA.slice(0, 5);
         }
-        
+        */
+
+        rawData = FALLBACK_DUMMY_DATA.slice(0, 5);
+
         // 데이터 가공 및 아이콘 매핑 적용
         const processedData: ProcessedJobRole[] = rawData.map((item, index) => {
           return {
