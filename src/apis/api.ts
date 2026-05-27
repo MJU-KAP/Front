@@ -9,7 +9,7 @@ interface CustomConfig extends InternalAxiosRequestConfig {
 
 export const api = axios.create({
   baseURL: import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080',
-  timeout: 180000,
+  timeout: 300000,
   withCredentials: true, 
 });
 
@@ -69,7 +69,7 @@ api.interceptors.response.use(
     if (originalRequest && (!err.response || err.response.status >= 500)) {
       originalRequest._retryCount = originalRequest._retryCount || 0;
 
-      if (originalRequest._retryCount < 3) {
+      if (originalRequest._retryCount < 2) {
         originalRequest._retryCount += 1;
 
         await new Promise((resolve) => setTimeout(resolve, 2000));
