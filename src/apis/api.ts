@@ -8,11 +8,11 @@ interface CustomConfig extends InternalAxiosRequestConfig {
 }
 
 export const api = axios.create({
-  baseURL: import.meta.env.PROD ? "/api" : import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080',
+  baseURL: import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080',
   timeout: 180000,
   withCredentials: true, 
 });
-  
+
 // 요청 인터셉터
 api.interceptors.request.use(
   (config) => {
