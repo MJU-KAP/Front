@@ -80,7 +80,7 @@ export default function FileUpload() {
         formData.append('files', file); 
       });
 
-      const endpoint = import.meta.env.PROD ? '/api/api/fileupload' : '/api/fileupload';
+      const endpoint = '/api/fileupload';
 
       const response = await api.post(endpoint, formData, {
         transformRequest: [
