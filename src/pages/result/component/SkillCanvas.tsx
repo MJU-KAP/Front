@@ -11,7 +11,11 @@ export default function SkillCanvas({ skills = [], hoveredSkill, setHoveredSkill
       const isBonus = hoveredPlanData?.skill === skill.name;
       const bonusAmount = isBonus ? hoveredPlanData.amount : 0;
 
-      const displayScore = skill.isLacking ? (isBonus ? bonusAmount : 20) : Math.min(100, skill.score + bonusAmount);
+      const displayScore = skill.isLacking 
+        ? (isBonus ? bonusAmount : skill.gap)
+        : Math.min(100, skill.score + bonusAmount);
+
+      if (displayScore <= 0) return;
 
       const isHovered = hoveredSkill === skill.name || isBonus;
       const isDimmed = (hoveredSkill !== null && hoveredSkill !== skill.name) || 
@@ -27,7 +31,7 @@ export default function SkillCanvas({ skills = [], hoveredSkill, setHoveredSkill
         const take = Math.min(remaining, available);
 
         result.push({
-          id: `${skill.name}-${partIndex}`,
+          id: `${skill.name}-${skill.isLacking ? 'lack' : 'own'}-${partIndex}`,
           name: skill.name,
           take,
           baseColor,
@@ -51,7 +55,7 @@ export default function SkillCanvas({ skills = [], hoveredSkill, setHoveredSkill
     });
 
     skills?.forEach(skill => {
-      const skillChunks = result.filter(c => c.originalSkill === skill.name);
+      const skillChunks = result.filter(c => c.originalSkill === skill.name && c.isLacking === skill.isLacking);
       if (skillChunks.length > 0) {
         let maxChunk = skillChunks[0];
         for (let i = 1; i < skillChunks.length; i++) {

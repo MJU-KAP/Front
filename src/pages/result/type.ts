@@ -3,6 +3,8 @@ export interface Skill {
   score: number;
   color: string;
   isLacking?: boolean;
+  gap: number;
+  required_score: number;
 }
 
 export interface SkillCanvasProps {

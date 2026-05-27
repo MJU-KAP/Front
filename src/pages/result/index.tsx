@@ -1,6 +1,6 @@
 import { useEffect, useState, useMemo } from "react";
 import { useParams, Navigate } from "react-router-dom"; 
-import type { AnalysisData, ParsedGap, ParsedRecommendation, ParsedSkill } from "./type";
+import type { AnalysisData, ParsedGap, ParsedRecommendation, ParsedSkill, Skill } from "./type";
 import ResultHeader from "./component/ResultHeader";
 import SkillCanvas from "./component/SkillCanvas";
 import SkillSummary from "./component/SkillSummary";
@@ -25,36 +25,53 @@ export default function ResultPage() {
     const fetchAnalysisData = async () => {
       try {
         const res = await api.get(`/api/analyze/result/${id}`);
-
         const parsed = typeof res.data.result === 'string' 
           ? JSON.parse(res.data.result) 
           : res.data.result;
 
-
         if (isMounted) {
-          const ownedSkills = (parsed.user_skills || []).map((s: ParsedSkill) => ({
-            name: s.name,
-            score: s.score,
-            color: "",
-            isLacking: false
-          }));
+          const skillMap = new Map<string, Skill>();
 
-          const lackingSkills = (parsed.skill_gaps || []).map((g: ParsedGap) => ({
-            name: g.name,
-            score: 0, 
-            color: "",
-            isLacking: true
-          }));
+          (parsed.user_skills || []).forEach((s: ParsedSkill & { required_score?: number }) => {
+            skillMap.set(s.name, {
+              name: s.name,
+              score: s.score || 0,
+              color: "",
+              isLacking: false,
+              gap: 0,
+              required_score: s.required_score || s.score || 0
+            });
+          });
+
+          (parsed.skill_gaps || []).forEach((g: ParsedGap & { required_score?: number }) => {
+            const existing = skillMap.get(g.name);
+            if (existing) {
+              existing.gap = g.gap || 0;
+              existing.required_score = g.required_score || (existing.score + existing.gap);
+              existing.isLacking = existing.score < existing.required_score;
+            } else {
+              skillMap.set(g.name, {
+                name: g.name,
+                score: 0,
+                color: "",
+                isLacking: true,
+                gap: g.gap || 0,
+                required_score: g.required_score || g.gap || 0
+              });
+            }
+          });
+
+          const unifiedSkills = Array.from(skillMap.values());
 
           const formattedData: AnalysisData = {
             id: res.data.recordId,
             fileName: res.data.inputSummary,
             jobFamily: parsed.target_job || "분석 결과",
-            skills: [...ownedSkills, ...lackingSkills],
+            skills: unifiedSkills,
             actionPlans: (parsed.recommendations || []).map((r: ParsedRecommendation) => {
               const targetSkill = r.skills_covered?.[0];
               const gapData = parsed.skill_gaps?.find((g: ParsedGap) => g.name === targetSkill);
-              const amount = gapData ? gapData.gap : 20; 
+              const amount = gapData ? gapData.gap : 0; 
             
               return {
                 id: r.rank,
@@ -96,7 +113,7 @@ export default function ResultPage() {
     
     const activePlan = data.actionPlans.find(p => p.id === hoveredPlan);
     if (activePlan) {
-      const match = activePlan.skillTarget.match(/([a-zA-Z0-9.]+)\s*\+(\d+)%/);
+      const match = activePlan.skillTarget.match(/([a-zA-Z0-9가-힣.]+)\s*\+(\d+)%/);
       if (match) {
         return { skill: match[1].trim(), amount: parseInt(match[2], 10) };
       }
@@ -122,7 +139,7 @@ export default function ResultPage() {
           </div>
           <SkillCanvas skills={data.skills} hoveredSkill={hoveredSkill} setHoveredSkill={setHoveredSkill} hoveredPlanData={hoveredPlanData} />
           <SkillSummary owned={data.totalOwned} lacking={data.totalLacking} score={data.totalScore} />
-          <SkillProgress skills={data.skills} hoveredSkill={hoveredSkill} hoveredPlanData={hoveredPlanData} />
+          <SkillProgress skills={data.skills} hoveredSkill={hoveredSkill} setHoveredSkill={setHoveredSkill} hoveredPlanData={hoveredPlanData} />
         </section>
         <section className="lg:col-span-1 mt-16 lg:mt-0">
           <ActionPlanSidebar plans={data.actionPlans} insight={data.insight} hoveredSkill={hoveredSkill} hoveredPlan={hoveredPlan} setHoveredPlan={setHoveredPlan} />
