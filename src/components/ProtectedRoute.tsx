@@ -1,16 +1,24 @@
-import { Navigate, Outlet } from 'react-router-dom';
+import { Navigate, Outlet, useLocation } from 'react-router-dom';
+import { savePostLoginRedirect } from '../utils/postLoginRedirect';
 
 interface ProtectedRouteProps {
-  isAuthenticated: boolean; // 로그인 여부
-  redirectPath?: string;    // 로그인 안 했을 때 보낼 경로
+  isAuthenticated: boolean;
+  redirectPath?: string;
 }
 
-const ProtectedRoute = ({ 
-  isAuthenticated, 
-  redirectPath = '/login' 
+const ProtectedRoute = ({
+  isAuthenticated,
+  redirectPath = '/login',
 }: ProtectedRouteProps) => {
+  const location = useLocation();
+
   if (!isAuthenticated) {
-    return <Navigate to={redirectPath} replace />;
+    const returnPath = `${location.pathname}${location.search}`;
+    savePostLoginRedirect(returnPath);
+
+    return (
+      <Navigate to={redirectPath} replace state={{ from: location }} />
+    );
   }
 
   return <Outlet />;

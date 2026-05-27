@@ -10,10 +10,8 @@ import ResultPage from './pages/result/index';
 import BoardPage from './pages/board/BoardPage';
 import BoardDetailPage from './pages/board/BoardDetailPage';
 import MyPage from './pages/mypage';
+import LoginPage from './pages/login';
 
-
-// 임시 페이지 컴포넌트들
-const Login = () => <div className="p-20 text-center">🔑 로그인 페이지</div>;
 function App() {
   // Zustand 스토어에서 로그인 상태와 상태 검사 함수 꺼내오기
   const { isLoggedIn, checkAuth } = useAuthStore();
@@ -28,6 +26,7 @@ function App() {
       <Routes>
         {/* 전역 헤더 없음 */}
         <Route path="/auth/kakao/callback" element={<KakaoCallback />} />
+        <Route path="/login" element={<LoginPage />} />
 
         <Route element={<ProtectedRoute isAuthenticated={isLoggedIn} />}>
           <Route path="/profile-setup" element={<ProfileSetupPage />} />
@@ -36,7 +35,6 @@ function App() {
         <Route element={<AppLayout />}>
           <Route path="/" element={<MainPage />} />
           <Route path="/main" element={<MainPage />} />
-          <Route path="/login" element={<Login />} />
           <Route path="/board/:category" element={<BoardPage />} />
           <Route path="/board/:category/:id" element={<BoardDetailPage />} />
 

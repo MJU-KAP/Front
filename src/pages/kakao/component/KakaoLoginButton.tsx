@@ -1,17 +1,9 @@
 import { Button } from '../../../components/ui/Button';
 import { useAuthStore } from '../../../store/authStore';
+import { startKakaoLogin } from '../../../utils/kakaoAuth';
 
 export default function KakaoLoginButton() {
   const { isLoggedIn, logout } = useAuthStore();
-
-  const handleKakaoLogin = () => {
-    const REST_API_KEY = import.meta.env.VITE_KAKAO_REST_API_KEY;
-    const REDIRECT_URI = import.meta.env.VITE_KAKAO_REDIRECT_URI;
-    
-    const KAKAO_AUTH_URL = `https://kauth.kakao.com/oauth/authorize?client_id=${REST_API_KEY}&redirect_uri=${REDIRECT_URI}&response_type=code`;
-
-    window.location.href = KAKAO_AUTH_URL;
-  };
 
   if (isLoggedIn) {
     return (
@@ -28,8 +20,9 @@ export default function KakaoLoginButton() {
 
   // 비로그인 상태일 때: 기존 카카오 로그인 버튼 보여주기
   return (
-    <button 
-      onClick={handleKakaoLogin}
+    <button
+      type="button"
+      onClick={startKakaoLogin}
       className="flex items-center gap-2 bg-[#FEE500] hover:bg-[#FDD800] text-[#000000] px-5 py-2.5 rounded-full font-bold text-sm transition-colors shadow-lg shadow-black/10"
     >
       <svg className="w-4 h-4 fill-current" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">

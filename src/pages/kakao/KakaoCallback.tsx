@@ -4,6 +4,7 @@ import { api } from '../../apis/api';
 import { fetchMyPage } from '../../apis/userApi';
 import Toast from '../../components/Toast';
 import { useAuthStore } from '../../store/authStore';
+import { consumePostLoginRedirect } from '../../utils/postLoginRedirect';
 
 export default function KakaoCallback() {
   const { login } = useAuthStore();
@@ -38,19 +39,21 @@ export default function KakaoCallback() {
         login(accessToken);
       } catch (err) {
         console.error('카카오 로그인 API 요청 실패: ', err);
-        setToast({
-          show: true,
-          title: '로그인에 실패했습니다',
-          description: '잠시 후 다시 시도해 주세요.',
-        });
-        setTimeout(() => navigate('/login', { replace: true }), 1500);
+        navigate('/login', { replace: true, state: { loginError: true } });
         return;
       }
 
       try {
         const me = await fetchMyPage();
         const onboarded = Boolean(me?.desiredJobRole);
-        navigate(onboarded ? '/' : '/profile-setup', { replace: true });
+
+        if (!onboarded) {
+          navigate('/profile-setup', { replace: true });
+          return;
+        }
+
+        const returnPath = consumePostLoginRedirect();
+        navigate(returnPath ?? '/', { replace: true });
       } catch (err) {
         console.error('프로필 조회 실패, 메인으로 이동: ', err);
         navigate('/', { replace: true });
