@@ -92,7 +92,7 @@ export default function FileUpload() {
         ],
       });
 
-      console.log(response);
+      console.log(response.data);
 
       const analysisId = response.data.recordId || response.data.analysisId || response.data.id;
 
