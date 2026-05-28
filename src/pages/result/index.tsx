@@ -69,8 +69,12 @@ export default function ResultPage() {
 
           const formattedData: AnalysisData = {
             id: rawData.recordId as string,
-            fileName: rawData.inputSummary as string,
-            jobFamily: parsed.target_job || "분석 결과",
+            
+            // fileName이 아예 없으면 빈 문자열("")로 세팅합니다.
+            fileName: (rawData.fileName as string) || (rawData.originalFileName as string) || (rawData.file_name as string) || "",
+            
+            jobFamily: (rawData.inputSummary as string) || parsed.target_job || "분석 결과",
+            
             skills: unifiedSkills,
             actionPlans: (parsed.recommendations || []).map((r: ParsedRecommendation) => {
               const targetSkill = r.skills_covered?.[0];
@@ -149,7 +153,9 @@ export default function ResultPage() {
 
   return (
     <div className="min-h-screen bg-zinc-50 text-zinc-900 w-full overflow-x-hidden">
-      <ResultHeader fileName={data.fileName} />
+      {/* 데이터에 파일명이 있을 때만 ResultHeader를 렌더링합니다 */}
+      {data.fileName && <ResultHeader fileName={data.fileName} />}
+      
       <main className="max-w-7xl mx-auto px-6 py-10 grid grid-cols-1 lg:grid-cols-3 gap-10">
         <section className="lg:col-span-2 flex flex-col gap-6">
           <div className="mb-4">
