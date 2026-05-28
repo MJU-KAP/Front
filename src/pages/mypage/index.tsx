@@ -1,6 +1,11 @@
+import { isAxiosError } from 'axios';
 import { useCallback, useEffect, useState } from 'react';
-import { fetchMyPage } from '../../apis/userApi';
+import {
+  deleteAnalysisResult,
+  fetchMyPage,
+} from '../../apis/userApi';
 import { Button } from '../../components/ui/Button';
+import Toast from '../../components/Toast';
 import type { MyPageResponse } from '../../types/mypage';
 import AnalysisHistoryCard from './components/AnalysisHistoryCard';
 import ProfileCard from './components/ProfileCard';
@@ -10,6 +15,19 @@ export default function MyPage() {
   const [data, setData] = useState<MyPageResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [deletingRecordId, setDeletingRecordId] = useState<string | null>(null);
+  const [toast, setToast] = useState<{
+    show: boolean;
+    title: string;
+    description?: string;
+    type?: 'warning' | 'success' | 'info';
+    icon?: string;
+  }>({
+    show: false,
+    title: '',
+  });
+
+  const closeToast = () => setToast((prev) => ({ ...prev, show: false }));
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -32,6 +50,68 @@ export default function MyPage() {
   useEffect(() => {
     void load();
   }, [load]);
+
+  const getDeleteErrorMessage = (error: unknown) => {
+    if (!isAxiosError(error)) {
+      return '삭제 처리 중 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.';
+    }
+
+    const status = error.response?.status;
+    if (status === 401) {
+      return '로그인이 만료되었습니다. 다시 로그인해 주세요.';
+    }
+    if (status === 403) {
+      return '본인 분석 기록만 삭제할 수 있습니다.';
+    }
+    if (status === 404) {
+      return '이미 삭제되었거나 존재하지 않는 분석 기록입니다.';
+    }
+    return '분석 기록 삭제에 실패했습니다. 잠시 후 다시 시도해 주세요.';
+  };
+
+  const handleDeleteRecord = useCallback(
+    async (recordId: string) => {
+      if (deletingRecordId) return;
+
+      const confirmed = window.confirm(
+        '분석 기록을 삭제하시겠어요?\n삭제한 기록은 복구할 수 없습니다.'
+      );
+      if (!confirmed) return;
+
+      setDeletingRecordId(recordId);
+      try {
+        await deleteAnalysisResult(recordId);
+        setData((prev) => {
+          if (!prev) return prev;
+          const nextRecords = prev.analysisRecords.filter(
+            (record) => record.recordId !== recordId
+          );
+          return {
+            ...prev,
+            analysisRecords: nextRecords,
+            analysisCount: nextRecords.length,
+          };
+        });
+        setToast({
+          show: true,
+          title: '분석 기록이 삭제되었습니다.',
+          type: 'success',
+          icon: '✅',
+        });
+      } catch (deleteError) {
+        setToast({
+          show: true,
+          title: '삭제에 실패했습니다.',
+          description: getDeleteErrorMessage(deleteError),
+          type: 'warning',
+          icon: '⚠️',
+        });
+      } finally {
+        setDeletingRecordId(null);
+      }
+    },
+    [deletingRecordId]
+  );
 
   return (
     <div className="min-h-screen bg-zinc-100 text-zinc-900">
@@ -71,7 +151,11 @@ export default function MyPage() {
                 <ul className="space-y-4">
                   {data.analysisRecords.map((record) => (
                     <li key={record.recordId}>
-                      <AnalysisHistoryCard record={record} />
+                      <AnalysisHistoryCard
+                        record={record}
+                        onDelete={handleDeleteRecord}
+                        isDeleting={deletingRecordId === record.recordId}
+                      />
                     </li>
                   ))}
                 </ul>
@@ -80,6 +164,14 @@ export default function MyPage() {
           </div>
         )}
       </main>
+      <Toast
+        show={toast.show}
+        onClose={closeToast}
+        title={toast.title}
+        description={toast.description}
+        type={toast.type}
+        icon={toast.icon}
+      />
     </div>
   );
 }

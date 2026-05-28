@@ -10,9 +10,15 @@ const TAG_STYLES = [
 
 type AnalysisHistoryCardProps = {
   record: AnalysisRecord;
+  onDelete: (recordId: string) => void;
+  isDeleting: boolean;
 };
 
-export default function AnalysisHistoryCard({ record }: AnalysisHistoryCardProps) {
+export default function AnalysisHistoryCard({
+  record,
+  onDelete,
+  isDeleting,
+}: AnalysisHistoryCardProps) {
   const metaParts = [formatKoreanDate(record.createdAt)];
   if (record.fileName) metaParts.push(record.fileName);
 
@@ -34,9 +40,19 @@ export default function AnalysisHistoryCard({ record }: AnalysisHistoryCardProps
           </ul>
         )}
       </div>
-      <Button variant="secondary" to={`/result/${record.recordId}`} className="shrink-0 self-start sm:self-center">
-        결과 보기
-      </Button>
+      <div className="flex shrink-0 gap-2 self-start sm:self-center">
+        <Button variant="secondary" to={`/result/${record.recordId}`}>
+          결과 보기
+        </Button>
+        <Button
+          variant="secondary"
+          onClick={() => onDelete(record.recordId)}
+          disabled={isDeleting}
+          className="border-red-200 text-red-700 hover:bg-red-50"
+        >
+          {isDeleting ? '삭제 중...' : '삭제'}
+        </Button>
+      </div>
     </article>
   );
 }
