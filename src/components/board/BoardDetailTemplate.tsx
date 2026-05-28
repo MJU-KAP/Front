@@ -22,10 +22,24 @@ interface BoardDetailTemplateProps {
 }
 
 export default function BoardDetailTemplate({ category, data }: BoardDetailTemplateProps) {
-  const basePath = `/board/${category}`;
-  const categoryName = 
-    category === 'activities' ? '대외활동' : 
-    category === 'competitions' ? '공모전' : '동아리';
+  // category prop에 맞게 한글명과 경로를 동적으로 매핑합니다.
+  const getCategoryInfo = (cat: string) => {
+    switch (cat.toLowerCase()) {
+      case 'activity':
+      case 'activities':
+        return { name: '대외활동', path: '/board/activities' };
+      case 'contest':
+      case 'competitions':
+        return { name: '공모전', path: '/board/competitions' };
+      case 'club':
+      case 'clubs':
+        return { name: '동아리', path: '/board/clubs' };
+      default:
+        return { name: '게시판', path: `/board/${cat}` };
+    }
+  };
+
+  const { name: categoryName, path: basePath } = getCategoryInfo(category);
 
   if (!data) {
     return (
