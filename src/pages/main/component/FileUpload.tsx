@@ -7,14 +7,17 @@ import LoadingScreen from '../../result/component/LoadingScreen';
 
 const MAX_FILE_SIZE = 100 * 1024 * 1024;
 const ALLOWED_EXTENSIONS = ['pdf', 'docx', 'txt', 'png', 'jpg', 'jpeg'];
+
 type AnalysisResult = Record<string, unknown>;
 
 export default function FileUpload() {
   const isLoggedIn = useAuthStore((state) => state.isLoggedIn);
   const navigate = useNavigate();
+  
   const [isDrag, setIsDrag] = useState(false);
   const [files, setFiles] = useState<File[]>([]);
   const inputRef = useRef<HTMLInputElement>(null);
+  
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [isDataReady, setIsDataReady] = useState(false);
   const [analysisId, setAnalysisId] = useState<string | null>(null);
@@ -92,17 +95,16 @@ export default function FileUpload() {
         }],
       });
 
-
       const returnedAnalysisId = response.data.recordId || response.data.analysisId || response.data.id || response.data.data?.analysisId;
       
       if (returnedAnalysisId) {
         setAnalysisId(returnedAnalysisId);
       } else {
-        console.error('분석 ID를 찾을 수 없습니다. 응답 구조를 확인하세요.');
+        console.error('분석 ID를 찾을 수 없습니다.');
       }
 
     } catch (error) {
-      console.error("파일 업로드 실패:", error);
+      console.error(error);
       setIsAnalyzing(false); 
       triggerToast('업로드 실패', '파일 업로드 중 문제가 발생했습니다.', '⚠️');
     }
@@ -128,18 +130,29 @@ export default function FileUpload() {
 
         const response = await api.get(checkEndpoint);
         
-        const currentStatus = response.data.status || response.data.result?.status;
+        let parsedResult = response.data.result;
+        if (typeof parsedResult === 'string') {
+          try {
+            parsedResult = JSON.parse(parsedResult);
+          } catch (e) {
+            console.error(e);
+          }
+        }
+
+        const currentStatus = response.data.status || parsedResult?.status;
 
         if (currentStatus === 'processing') {
           if (isMounted) {
             timerId = setTimeout(() => checkResultStatus(attemptCount + 1), 5000);
           }
+        } else if (currentStatus === 'error') {
+          setIsAnalyzing(false);
+          triggerToast('분석 실패', 'AI 서버에서 오류가 발생했습니다. 잠시 후 다시 시도해주세요.', '❌', 'warning');
         } else {
           setResultData(response.data as AnalysisResult); 
           setIsDataReady(true);         
         }
-      } catch (error) {
-        console.error("조회 에러, 5초 뒤 재시도:", error);
+      } catch {
         if (isMounted) {
           timerId = setTimeout(() => checkResultStatus(attemptCount + 1), 5000); 
         }
