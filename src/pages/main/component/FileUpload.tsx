@@ -137,18 +137,24 @@ export default function FileUpload() {
           }
         }
 
-        const currentStatus = response.data.status || parsedResult?.status;
+        const rawStatus = response.data.status || parsedResult?.status;
+        const currentStatus = typeof rawStatus === 'string' ? rawStatus.toUpperCase() : '';
 
-        if (currentStatus === 'processing') {
+        if (currentStatus === 'PROCESSING') {
           if (isMounted) {
             timerId = setTimeout(() => checkResultStatus(attemptCount + 1), 5000);
           }
-        } else if (currentStatus === 'error') {
+        } else if (currentStatus === 'FAILED' || currentStatus === 'ERROR') {
+          console.error("서버 내부 분석 에러 발생:", parsedResult);
           setIsAnalyzing(false);
           triggerToast('분석 실패', 'AI 서버에서 오류가 발생했습니다. 잠시 후 다시 시도해주세요.', '❌', 'warning');
-        } else {
+        } else if (currentStatus === 'SUCCESS') {
           setResultData(response.data as AnalysisResult); 
           setIsDataReady(true);         
+        } else {
+          if (isMounted) {
+            timerId = setTimeout(() => checkResultStatus(attemptCount + 1), 5000);
+          }
         }
       } catch {
         if (isMounted) {
