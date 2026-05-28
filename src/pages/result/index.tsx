@@ -1,5 +1,5 @@
 import { useEffect, useState, useMemo } from "react";
-import { useParams, Navigate } from "react-router-dom"; 
+import { useParams, Navigate, useLocation } from "react-router-dom"; 
 import type { AnalysisData, ParsedGap, ParsedRecommendation, ParsedSkill, Skill } from "./type";
 import ResultHeader from "./component/ResultHeader";
 import SkillCanvas from "./component/SkillCanvas";
@@ -11,9 +11,14 @@ import { api } from "../../apis/api";
 
 export default function ResultPage() {
   const { id } = useParams<{ id: string }>();
+  const location = useLocation();
+
+  const preloadedData = location.state?.preloadedData as Record<string, unknown> | undefined;
+
   const [data, setData] = useState<AnalysisData | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [showResultView, setShowResultView] = useState(false); 
+
+  const [showResultView, setShowResultView] = useState(!!preloadedData); 
 
   const [hoveredSkill, setHoveredSkill] = useState<string | null>(null);
   const [hoveredPlan, setHoveredPlan] = useState<number | null>(null);
@@ -21,13 +26,12 @@ export default function ResultPage() {
   useEffect(() => {
     if (!id) return;
     let isMounted = true;
-    
-    const fetchAnalysisData = async () => {
+
+    const formatAndSetData = (rawData: Record<string, unknown>) => {
       try {
-        const res = await api.get(`/api/analyze/result/${id}`);
-        const parsed = typeof res.data.result === 'string' 
-          ? JSON.parse(res.data.result) 
-          : res.data.result;
+        const parsed = typeof rawData.result === 'string' 
+          ? JSON.parse(rawData.result) 
+          : rawData.result;
 
         if (isMounted) {
           const skillMap = new Map<string, Skill>();
@@ -64,8 +68,8 @@ export default function ResultPage() {
           const unifiedSkills = Array.from(skillMap.values());
 
           const formattedData: AnalysisData = {
-            id: res.data.recordId,
-            fileName: res.data.inputSummary,
+            id: rawData.recordId as string,
+            fileName: rawData.inputSummary as string,
             jobFamily: parsed.target_job || "분석 결과",
             skills: unifiedSkills,
             actionPlans: (parsed.recommendations || []).map((r: ParsedRecommendation) => {
@@ -86,7 +90,6 @@ export default function ResultPage() {
             totalOwned: parsed.user_skills?.length || 0,
             totalLacking: parsed.skill_gaps?.length || 0,
             totalScore: parsed.readiness_score || 0,
-
             insight: {
               strength: parsed.ai_insight?.strength || "분석된 강점 데이터가 없습니다.",
               improvement: parsed.ai_insight?.improvement || "분석된 보완점 데이터가 없습니다.",
@@ -99,14 +102,30 @@ export default function ResultPage() {
           setData(formattedData);
         }
       } catch (err) {
+        console.error("데이터 파싱 실패:", err);
+        if (isMounted) setError("데이터 처리 중 오류가 발생했습니다.");
+      }
+    };
+
+    if (preloadedData) {
+      formatAndSetData(preloadedData);
+      return; 
+    }
+
+    const fetchAnalysisData = async () => {
+      try {
+        const res = await api.get(`/api/analyze/result/${id}`);
+        formatAndSetData(res.data);
+      } catch (err) {
         console.error("데이터 불러오기 실패:", err);
         if (isMounted) setError("분석 결과를 불러오는데 실패했습니다."); 
       }
     };
     
     fetchAnalysisData();
+    
     return () => { isMounted = false; };
-  }, [id]);
+  }, [id, preloadedData]);
 
   const hoveredPlanData = useMemo(() => {
     if (hoveredPlan === null || !data) return null;
@@ -123,7 +142,7 @@ export default function ResultPage() {
 
   if (!id) return <Navigate to="/" replace />;
   if (error) return <div className="min-h-screen bg-zinc-950 flex justify-center items-center text-red-500">{error}</div>;
-  
+
   if (!data || !showResultView) {
     return <LoadingScreen isDataReady={data !== null} onComplete={() => setShowResultView(true)} />;
   }
