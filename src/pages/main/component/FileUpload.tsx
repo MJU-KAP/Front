@@ -86,7 +86,7 @@ export default function FileUpload() {
         formData.append('files', file); 
       });
 
-      const endpoint = import.meta.env.PROD ? '/api/api/fileupload' : '/api/fileupload';
+      const endpoint = '/api/fileupload';
       const response = await api.post(endpoint, formData, {
         transformRequest: [(data, headers) => {
           delete headers['Content-Type'];
@@ -124,9 +124,7 @@ export default function FileUpload() {
       }
 
       try {
-        const checkEndpoint = import.meta.env.PROD 
-          ? `/api/api/analyze/result/${analysisId}` 
-          : `/api/analyze/result/${analysisId}`;
+        const checkEndpoint = `/api/analyze/result/${analysisId}`;
 
         const response = await api.get(checkEndpoint);
         
