@@ -11,6 +11,7 @@ import BoardPage from './pages/board/BoardPage';
 import BoardDetailPage from './pages/board/BoardDetailPage';
 import MyPage from './pages/mypage';
 import LoginPage from './pages/login';
+import CalendarPage from './pages/calendar';
 
 function App() {
   // Zustand 스토어에서 로그인 상태와 상태 검사 함수 꺼내오기
@@ -42,6 +43,7 @@ function App() {
             <Route path="/mypage" element={<MyPage />} />
             <Route path="/result/:id" element={<ResultPage />} />
             <Route path="/result" element={<Navigate to="/" replace />} />
+            <Route path="/calendar" element={<CalendarPage />} />
           </Route>
         </Route>
 

@@ -39,6 +39,7 @@ export interface ActionPlan {
   desc: string;
   deadline: string;
   url?: string;
+  skillsCovered?: string[];
 }
 
 export interface AnalysisData {
@@ -60,6 +61,7 @@ export interface AiInsightData {
   growth_direction: string;
   market_fit: string;
   summary: string;
+  user_skills?: { name: string; score: number; level?: string }[];
 }
 
 export interface ParsedSkill {

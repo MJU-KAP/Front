@@ -88,7 +88,8 @@ export default function ResultPage() {
                 title: r.title,
                 desc: r.description,
                 deadline: `D-${r.deadline_days || 0}`,
-                url: r.url
+                url: r.url,
+                skillsCovered: r.skills_covered,
               };
             }),
             totalOwned: parsed.user_skills?.length || 0,
@@ -99,7 +100,8 @@ export default function ResultPage() {
               improvement: parsed.ai_insight?.improvement || "분석된 보완점 데이터가 없습니다.",
               growth_direction: parsed.ai_insight?.growth_direction || "분석된 성장 방향 데이터가 없습니다.",
               market_fit: parsed.ai_insight?.market_fit || "분석된 시장 적합도 데이터가 없습니다.",
-              summary: parsed.ai_insight?.summary || "분석 결과를 확인하세요."
+              summary: parsed.ai_insight?.summary || "분석 결과를 확인하세요.",
+              user_skills: parsed.user_skills || [],
             }
           };
           

@@ -8,6 +8,9 @@ export default function KakaoLoginButton() {
   if (isLoggedIn) {
     return (
       <>
+      <Button variant="secondary" to="/calendar">
+          캘린더
+        </Button>
         <Button variant="secondary" to="/mypage">
           마이페이지
         </Button>
