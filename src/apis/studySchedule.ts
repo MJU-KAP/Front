@@ -45,13 +45,13 @@ export function decodeLinks(raw: string | undefined): ScheduleLink[] {
   });
 }
 
-// ── 링크 정제: 잘린/형식 이상 링크 제거 + title 보정 ─────────
+// ── 링크 정제: 잘린/형식 이상 제거 + title 보정 ─────────
 function sanitizeLinks(links: ScheduleLink[] = []): ScheduleLink[] {
   return links
     .filter((l) =>
       l?.url &&
-      /^https?:\/\/\S+$/.test(l.url) &&  // http(s):// 로 시작하는 완전한 형태
-      !l.url.includes('…') &&            // 잘린 url 제거
+      /^https?:\/\/\S+$/.test(l.url) &&
+      !l.url.includes('…') &&
       !l.url.includes('...'),
     )
     .map((l) => ({
@@ -84,9 +84,6 @@ export function buildMembers(userSkills?: UserSkill[]): unknown {
   return [{ name: '나', skills }];
 }
 
-const extractDomain = (goal: string) =>
-  (goal ?? '').replace(/\s*\+?\d+\s*%?$/, '').trim() || '학습';
-
 const fmt = (dt: Date) =>
   `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, '0')}-${String(dt.getDate()).padStart(2, '0')}`;
 
@@ -102,7 +99,7 @@ const tagFor = (p: PurposeLike) => `[${p.name}]`;
 export async function ensureSchedule(
   purpose: PurposeLike,
   members: unknown = [],
-  domain?: string,
+  domain?: string,   // pickDomain 결과. 있으면 학습 모드, 없으면 비학습(준비 일정) 모드
 ): Promise<ScheduleItem[]> {
   const tag = tagFor(purpose);
 
@@ -123,20 +120,25 @@ export async function ensureSchedule(
     console.error('[Schedule] GET /api/calendar 실패:', e);
   }
 
-  // 2) Gemini로 생성 (검색 기반 링크) + 링크 정제
-  const finalDomain = domain?.trim() || extractDomain(purpose.goal);
+  // 2) 학습 도메인 여부로 모드 결정
+  const finalDomain = domain?.trim();
+  const withLinks = !!finalDomain;
+
   const generated = await generateStudySchedule({
     members,
     activity: purpose.name,
-    domain: finalDomain,
+    domain: finalDomain ?? '', 
     endDate: normalizeDate(purpose.date),
+    withLinks,  
   });
+
+  // 학습 모드만 링크 정제, 비학습은 빈 배열
   const items: ScheduleItem[] = generated.map((it) => ({
     ...it,
-    links: sanitizeLinks(it.links),
+    links: withLinks ? sanitizeLinks(it.links) : [],
   }));
 
-  // 3) 캘린더 저장 (링크 인코딩)
+  // 3) 캘린더 저장 (links 없으면 link는 빈 문자열)
   const results = await Promise.allSettled(
     items.map((it) =>
       api.post('/api/calendar', {
