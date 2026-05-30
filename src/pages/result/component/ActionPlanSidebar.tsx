@@ -120,12 +120,12 @@ export default function ActionPlanSidebar({ plans, insight, hoveredSkill, hovere
       showToast('다른 목표가 이미 설정되어 있습니다', 'warning', '하나의 목표만 설정할 수 있어요', '⚠️');
       return;
     }
-
+  
     const dateMatch = plan.deadline?.match(/\d{4}-\d{2}-\d{2}/);
     const date = dateMatch
       ? dateMatch[0]
       : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
-
+  
     const body = {
       name: plan.title,
       date,
@@ -133,25 +133,25 @@ export default function ActionPlanSidebar({ plans, insight, hoveredSkill, hovere
       type: 'ETC',
       goal: plan.skillTarget ?? '역량 강화',
     };
-
+  
     try {
       const res = await api.post('/api/purposes', body);
       setGoalPlanId(plan.id);
       showToast('목표로 설정했습니다', 'success', plan.title, '🎯');
-
-      // 도메인: plan.skillsCovered(있으면) → skillTarget 순으로 후보 검사
+  
+      // 학습 도메인을 직접 확정해 전달 (ETC라도 학습 모드로 감)
       const domain = pickDomain(plan.skillsCovered?.[0], plan.skillTarget);
-
-      // 일정 생성은 백그라운드 — 숙련도 전달 + 도메인 명시
+  
       ensureSchedule(
         {
           purposeId: res.data.purposeId,
           name: res.data.name,
           goal: res.data.goal,
           date: res.data.date,
+          type: 'ETC',
         },
         buildMembers(insight?.user_skills),
-        domain,
+        domain,   // 도메인 직접 전달 → 잡히면 학습, 못 잡으면 resolveDomain이 ETC 키워드로 재판별
       ).catch((e) => console.error('[Schedule] 백그라운드 생성 실패:', e));
     } catch (e: unknown) {
       console.error('[Goal] POST /api/purposes 실패:', e);

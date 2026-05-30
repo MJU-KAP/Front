@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { api } from '../../apis/api';
 import Toast from '../Toast';
 import type { PurposeListResponse } from '../../types/calendar';
-import { ensureSchedule, pickDomain } from '../../apis/studySchedule';
+import { ensureSchedule } from '../../apis/studySchedule';
 
 export interface BoardDetailData {
   id: string | number;
@@ -52,13 +52,6 @@ function getCategoryInfo(cat: string): { name: string; path: string; type: Purpo
   }
 }
 
-// 오늘 자정 기준 D-Day (당일=0, 지남<0)
-function calcDDay(dateStr: string): number {
-  const target = new Date(dateStr).setHours(0, 0, 0, 0);
-  const today = new Date().setHours(0, 0, 0, 0);
-  return Math.ceil((target - today) / 86400000);
-}
-
 export default function BoardDetailTemplate({ category, data }: BoardDetailTemplateProps) {
   const [goalSet, setGoalSet] = useState(false);        // 이 게시물이 목표인지
   const [hasAnyGoal, setHasAnyGoal] = useState(false);  // 다른 목표가 이미 있는지
@@ -89,30 +82,29 @@ export default function BoardDetailTemplate({ category, data }: BoardDetailTempl
 
   const handleSetGoal = async () => {
     if (!data) return;
-
-    // 1) 이 게시물이 이미 목표
+  
     if (goalSet) {
       showToast('이미 목표로 설정되어 있습니다', 'warning', '캘린더에서 확인해보세요', '⚠️');
       return;
     }
-    // 2) 다른 목표가 이미 있음 — 하나만 허용
     if (hasAnyGoal) {
       showToast('다른 목표가 이미 설정되어 있습니다', 'warning', '하나의 목표만 설정할 수 있어요', '⚠️');
       return;
     }
-
+  
     const raw = data.deadlineDate ?? data.recruitPeriod ?? '';
     const dates = raw.match(/\d{4}-\d{2}-\d{2}/g);
-    const date = dates && dates.length
-      ? dates[dates.length - 1] 
+    const date = dates?.length
+      ? dates[dates.length - 1]
       : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
-
-    // 3) 오늘까지 마감(당일 포함)인 활동은 토스트로 차단
-    if (calcDDay(date) <= 0) {
+  
+    // 오늘까지 마감인 활동은 토스트로 차단
+    const dDay = Math.ceil((new Date(date).setHours(0,0,0,0) - new Date().setHours(0,0,0,0)) / 86400000);
+    if (dDay <= 0) {
       showToast('목표로 설정할 수 없어요', 'warning', '마감일이 지난 활동이에요', '⏰');
       return;
     }
-
+  
     const body = {
       name: data.title,
       date,
@@ -120,24 +112,24 @@ export default function BoardDetailTemplate({ category, data }: BoardDetailTempl
       type: purposeType,
       goal: `${categoryName} 지원`,
     };
-
+  
     try {
       const res = await api.post('/api/purposes', body);
       setGoalSet(true);
       setHasAnyGoal(true);
       showToast('목표로 설정했습니다', 'success', data.title, '🎯');
-
-      const domain = pickDomain(...(data.tags ?? []));
-
+  
+      // type(CONTEST/ACTIVITY 등)을 넘기면 resolveDomain이 비학습으로 처리 → 링크 없는 준비 일정
       ensureSchedule(
         {
           purposeId: res.data.purposeId,
           name: res.data.name,
           goal: res.data.goal,
           date: res.data.date,
+          type: purposeType,
         },
         [],
-        domain,
+        // 도메인 인자 생략
       ).catch((e) => console.error('[Schedule] 백그라운드 생성 실패:', e));
     } catch (e: unknown) {
       console.error('[Goal] POST /api/purposes 실패:', e);

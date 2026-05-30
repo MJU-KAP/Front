@@ -1,11 +1,14 @@
 import { api } from './api';
 import { generateStudySchedule, type ScheduleItem } from './gemini';
 
+export type PurposeType = 'CERTIFICATION' | 'CONTEST' | 'INTERNSHIP' | 'ACTIVITY' | 'ETC';
+
 export interface PurposeLike {
   purposeId: number;
   name: string;
   goal: string;
   date: string;
+  type?: PurposeType;
 }
 
 export interface UserSkill { name: string; score: number; level?: string }
@@ -61,13 +64,15 @@ function sanitizeLinks(links: ScheduleLink[] = []): ScheduleLink[] {
     }));
 }
 
-// ── 도메인 추출 ──────────────────────────────────
+// ── 도메인 판별 ──────────────────────────────────
 const KNOWN_DOMAINS = [
   '알고리즘', '자료구조', 'Android SDK', 'Android', 'Git', 'REST API 설계', 'REST API',
   'Kotlin', 'Java', 'Coroutine', 'MVVM', 'React', 'JavaScript', 'TypeScript',
-  'Spring', 'CS', '네트워크', '데이터베이스', 'SQL', 'Figma',
+  'Spring', 'CS', '네트워크', '데이터베이스', 'SQL', 'Figma', 'Python', 'C++',
+  'Docker', '운영체제', 'Vue', 'Node',
 ];
 
+/** 후보 문자열들에서 학습 도메인 키워드를 찾음 (없으면 undefined) */
 export function pickDomain(...candidates: (string | undefined)[]): string | undefined {
   for (const c of candidates) {
     if (!c) continue;
@@ -75,6 +80,19 @@ export function pickDomain(...candidates: (string | undefined)[]): string | unde
     if (hit) return hit;
   }
   return undefined;
+}
+
+/**
+ * 학습 도메인 결정. 학습이면 도메인 문자열, 비학습이면 undefined.
+ * - 비학습성 type(공모전/대외활동/인턴/자격증)은 즉시 비학습 처리
+ * - ETC만 키워드(pickDomain)로 학습 여부 판별
+ */
+export function resolveDomain(
+  type: PurposeType | undefined,
+  ...candidates: (string | undefined)[]
+): string | undefined {
+  if (type && type !== 'ETC') return undefined;
+  return pickDomain(...candidates);
 }
 
 export function buildMembers(userSkills?: UserSkill[]): unknown {
@@ -99,7 +117,7 @@ const tagFor = (p: PurposeLike) => `[${p.name}]`;
 export async function ensureSchedule(
   purpose: PurposeLike,
   members: unknown = [],
-  domain?: string,   // pickDomain 결과. 있으면 학습 모드, 없으면 비학습(준비 일정) 모드
+  domain?: string,   // 호출부에서 학습 도메인을 직접 줄 수도 있음(우선)
 ): Promise<ScheduleItem[]> {
   const tag = tagFor(purpose);
 
@@ -120,16 +138,17 @@ export async function ensureSchedule(
     console.error('[Schedule] GET /api/calendar 실패:', e);
   }
 
-  // 2) 학습 도메인 여부로 모드 결정
-  const finalDomain = domain?.trim();
+  // 2) 학습 도메인 결정: 명시 domain 우선 → 없으면 type 기반 판별
+  const finalDomain =
+    domain?.trim() || resolveDomain(purpose.type, purpose.goal, purpose.name);
   const withLinks = !!finalDomain;
 
   const generated = await generateStudySchedule({
     members,
     activity: purpose.name,
-    domain: finalDomain ?? '', 
+    domain: finalDomain ?? '',
     endDate: normalizeDate(purpose.date),
-    withLinks,  
+    withLinks,
   });
 
   // 학습 모드만 링크 정제, 비학습은 빈 배열
@@ -138,7 +157,7 @@ export async function ensureSchedule(
     links: withLinks ? sanitizeLinks(it.links) : [],
   }));
 
-  // 3) 캘린더 저장 (links 없으면 link는 빈 문자열)
+  // 3) 캘린더 저장
   const results = await Promise.allSettled(
     items.map((it) =>
       api.post('/api/calendar', {
