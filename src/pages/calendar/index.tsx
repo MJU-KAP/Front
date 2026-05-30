@@ -64,7 +64,6 @@ export default function CalendarPage() {
 
     triedFor.current.add(target.purposeId);
     setGenerating(true);
-    console.log('[Calendar] 일정 없는 목표 발견 → 생성:', target.name);
 
     ensureSchedule({
       purposeId: target.purposeId,

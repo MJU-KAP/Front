@@ -134,11 +134,8 @@ export default function ActionPlanSidebar({ plans, insight, hoveredSkill, hovere
       goal: plan.skillTarget ?? '역량 강화',
     };
 
-    console.log('[Goal] POST /api/purposes 요청:', body);
-
     try {
       const res = await api.post('/api/purposes', body);
-      console.log('[Goal] POST /api/purposes 응답:', res.data);
       setGoalPlanId(plan.id);
       showToast('목표로 설정했습니다', 'success', plan.title, '🎯');
 

@@ -52,8 +52,16 @@ function getCategoryInfo(cat: string): { name: string; path: string; type: Purpo
   }
 }
 
+// 오늘 자정 기준 D-Day (당일=0, 지남<0)
+function calcDDay(dateStr: string): number {
+  const target = new Date(dateStr).setHours(0, 0, 0, 0);
+  const today = new Date().setHours(0, 0, 0, 0);
+  return Math.ceil((target - today) / 86400000);
+}
+
 export default function BoardDetailTemplate({ category, data }: BoardDetailTemplateProps) {
-  const [goalSet, setGoalSet] = useState(false);
+  const [goalSet, setGoalSet] = useState(false);        // 이 게시물이 목표인지
+  const [hasAnyGoal, setHasAnyGoal] = useState(false);  // 다른 목표가 이미 있는지
   const [toastShow, setToastShow] = useState(false);
   const [toastState, setToastState] = useState<ToastState>({ title: '' });
 
@@ -63,8 +71,8 @@ export default function BoardDetailTemplate({ category, data }: BoardDetailTempl
     if (!data) return;
     api.get<PurposeListResponse>('/api/purposes')
       .then((res) => {
-        const already = res.data.items.some((p) => p.name === data.title);
-        if (already) setGoalSet(true);
+        setHasAnyGoal(res.data.items.length > 0);
+        setGoalSet(res.data.items.some((p) => p.name === data.title));
       })
       .catch((e) => console.error('[Goal] GET /api/purposes 실패:', e));
   }, [data]);
@@ -82,8 +90,14 @@ export default function BoardDetailTemplate({ category, data }: BoardDetailTempl
   const handleSetGoal = async () => {
     if (!data) return;
 
+    // 1) 이 게시물이 이미 목표
     if (goalSet) {
       showToast('이미 목표로 설정되어 있습니다', 'warning', '캘린더에서 확인해보세요', '⚠️');
+      return;
+    }
+    // 2) 다른 목표가 이미 있음 — 하나만 허용
+    if (hasAnyGoal) {
+      showToast('다른 목표가 이미 설정되어 있습니다', 'warning', '하나의 목표만 설정할 수 있어요', '⚠️');
       return;
     }
 
@@ -93,6 +107,12 @@ export default function BoardDetailTemplate({ category, data }: BoardDetailTempl
       ? dateMatch[0]
       : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
 
+    // 3) 오늘까지 마감(당일 포함)인 활동은 토스트로 차단
+    if (calcDDay(date) <= 0) {
+      showToast('목표로 설정할 수 없어요', 'warning', '마감일이 지난 활동이에요', '⏰');
+      return;
+    }
+
     const body = {
       name: data.title,
       date,
@@ -101,18 +121,14 @@ export default function BoardDetailTemplate({ category, data }: BoardDetailTempl
       goal: `${categoryName} 지원`,
     };
 
-    console.log('[Goal] POST /api/purposes 요청:', body);
-
     try {
       const res = await api.post('/api/purposes', body);
-      console.log('[Goal] POST /api/purposes 응답:', res.data);
       setGoalSet(true);
+      setHasAnyGoal(true);
       showToast('목표로 설정했습니다', 'success', data.title, '🎯');
 
-      // tags 중 학습 도메인이 있으면 사용, 없으면 undefined → goal 폴백
       const domain = pickDomain(...(data.tags ?? []));
 
-      // 일정 생성은 백그라운드 — members 없음
       ensureSchedule(
         {
           purposeId: res.data.purposeId,
@@ -289,10 +305,11 @@ export default function BoardDetailTemplate({ category, data }: BoardDetailTempl
                 </div>
               </div>
 
-              {/* 목표 설정 버튼 */}
+              {/* 목표 설정 버튼 — goalSet일 때만 비활성, 나머지는 눌러서 토스트로 안내 */}
               <button
                 type="button"
                 onClick={handleSetGoal}
+                disabled={goalSet}
                 className={[
                   'w-full py-3 rounded-xl text-sm font-bold transition-all mb-3',
                   goalSet
