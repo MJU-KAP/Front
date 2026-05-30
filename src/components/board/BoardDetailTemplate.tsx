@@ -102,9 +102,9 @@ export default function BoardDetailTemplate({ category, data }: BoardDetailTempl
     }
 
     const raw = data.deadlineDate ?? data.recruitPeriod ?? '';
-    const dateMatch = raw.match(/\d{4}-\d{2}-\d{2}/);
-    const date = dateMatch
-      ? dateMatch[0]
+    const dates = raw.match(/\d{4}-\d{2}-\d{2}/g);
+    const date = dates && dates.length
+      ? dates[dates.length - 1] 
       : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
 
     // 3) 오늘까지 마감(당일 포함)인 활동은 토스트로 차단

@@ -38,13 +38,13 @@ export function decodeLinks(raw: string | undefined): ScheduleLink[] {
   if (!raw) return [];
   // 구분자가 없으면 옛 데이터(단일 URL)로 간주
   if (!raw.includes(PART_SEP)) {
-    return [{ type: 'blog', url: raw, title: '관련 자료' }];
+    return [{ type: 'blog', url: raw, title: '학습 자료' }];
   }
   return raw.split(LINK_SEP).map((s) => {
     const idx = s.indexOf(PART_SEP);
     const type = (s.slice(0, idx) === 'youtube' ? 'youtube' : 'blog') as LinkType;
     const url = decodeURIComponent(s.slice(idx + 1));
-    return { type, url, title: type === 'youtube' ? '영상 자료' : '관련 자료' };
+    return { type, url, title: type === 'youtube' ? '영상 자료' : '학습 자료' };
   });
 }
 // ──────────────────────────────────────────────────────────────
