@@ -13,13 +13,6 @@ export interface ScheduleItem {
   links: { type: 'youtube' | 'blog'; url: string; title: string }[];
 }
 
-const fmt = (dt: Date) => {
-  const y = dt.getFullYear();
-  const m = String(dt.getMonth() + 1).padStart(2, '0');
-  const day = String(dt.getDate()).padStart(2, '0');
-  return `${y}-${m}-${day}`;
-};
-
 const SYSTEM = `You are a study-schedule generator for a coding/algorithm study group.
 
 INPUT (JSON):
@@ -43,41 +36,26 @@ OUTPUT RULES:
 - Write topic and description in KOREAN. description: 2-3 concrete sentences
   (what they learn + one small hands-on task).
 - links: 1-3 per day. type MUST be "youtube" or "blog" only.
-  Use real, well-known resources (e.g. GeeksforGeeks, MDN, Fireship). NEVER output roadmap.sh links.
+
+LINK RULES (IMPORTANT — use Google Search):
+- Use Google Search to find REAL, CURRENTLY-LIVE URLs for each day's topic.
+- Every URL must be one you actually found via search. Do NOT invent or guess URLs.
+- Prefer stable sources: official docs, GeeksforGeeks, MDN, well-known YouTube channels.
+- For youtube links, use a real watch URL (https://www.youtube.com/watch?v=...).
+- NEVER output roadmap.sh links.
+
 - Return ONLY JSON. No markdown, no commentary.`;
 
-const responseSchema = {
-  type: 'object',
-  properties: {
-    count: { type: 'integer' },
-    items: {
-      type: 'array',
-      items: {
-        type: 'object',
-        properties: {
-          scheduleId: { type: 'integer' },
-          date: { type: 'string' },
-          topic: { type: 'string' },
-          description: { type: 'string' },
-          links: {
-            type: 'array',
-            items: {
-              type: 'object',
-              properties: {
-                type: { type: 'string', enum: ['youtube', 'blog'] },
-                url: { type: 'string' },
-                title: { type: 'string' },
-              },
-              required: ['type', 'url', 'title'],
-            },
-          },
-        },
-        required: ['scheduleId', 'date', 'topic', 'description', 'links'],
-      },
-    },
-  },
-  required: ['count', 'items'],
-};
+const fmt = (dt: Date) =>
+  `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, '0')}-${String(dt.getDate()).padStart(2, '0')}`;
+
+function extractJson(text: string): { count?: number; items: ScheduleItem[] } {
+  const cleaned = text.replace(/```json/gi, '').replace(/```/g, '');
+  const start = cleaned.indexOf('{');
+  const end = cleaned.lastIndexOf('}');
+  if (start === -1 || end === -1) throw new Error('응답에서 JSON을 찾지 못했습니다.');
+  return JSON.parse(cleaned.slice(start, end + 1));
+}
 
 export async function generateStudySchedule(p: {
   members: unknown;
@@ -91,10 +69,8 @@ export async function generateStudySchedule(p: {
   }
 
   const schedule: { scheduleId: number; date: string }[] = [];
-  const d = new Date();
-  d.setHours(0, 0, 0, 0); 
-  const end = new Date(p.endDate);
-  end.setHours(0, 0, 0, 0);
+  const d = new Date(); d.setHours(0, 0, 0, 0);
+  const end = new Date(p.endDate); end.setHours(0, 0, 0, 0);
   let id = 1;
   while (d <= end) {
     schedule.push({ scheduleId: id++, date: fmt(d) });
@@ -108,23 +84,32 @@ export async function generateStudySchedule(p: {
     '/models/gemini-2.5-flash:generateContent',
     {
       system_instruction: { parts: [{ text: SYSTEM }] },
-      contents: [{ role: 'user', parts: [{ text: JSON.stringify({ ...p, schedule }) }] }],
-      generationConfig: {
-        temperature: 0.3,
-        responseMimeType: 'application/json',
-        responseSchema,
-      },
+      contents: [{ role: 'user', parts: [{ text: JSON.stringify({
+        members: p.members,
+        activity: p.activity,
+        domain: p.domain,
+        schedule,
+      }) }] }],
+      tools: [{ google_search: {} }],
+      generationConfig: { temperature: 0.3 },
     },
     { headers: { 'x-goog-api-key': apiKey } },
   );
 
-  // 응답 구조 방어: 차단(safety)·빈 응답이면 candidates가 비어 있을 수 있음
-  const text = res.data?.candidates?.[0]?.content?.parts?.[0]?.text;
+  const parts = res.data?.candidates?.[0]?.content?.parts as
+    | { text?: string }[]
+    | undefined;
+  const text = parts?.map((pt) => pt.text ?? '').join('') ?? '';
+
   if (!text) {
-    console.error('[Gemini] 예상치 못한 응답:', JSON.stringify(res.data, null, 2));
+    console.error('[Gemini] 빈 응답:', JSON.stringify(res.data, null, 2));
     throw new Error('Gemini 응답에서 텍스트를 찾지 못했습니다.');
   }
 
-  const parsed = JSON.parse(text) as { count: number; items: ScheduleItem[] };
+  const parsed = extractJson(text);
+  if (!Array.isArray(parsed.items)) {
+    console.error('[Gemini] items 누락:', text);
+    throw new Error('생성 결과에 items가 없습니다.');
+  }
   return parsed.items;
 }
