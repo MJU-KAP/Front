@@ -9,15 +9,8 @@ const TYPE_OPTIONS: { value: PurposeType; label: string }[] = [
   { value: 'ETC', label: '기타' },
 ];
 
-const TYPE_COLOR: Record<PurposeType, string> = {
-  CERTIFICATION: 'bg-orange-100 text-orange-600',
-  CONTEST: 'bg-purple-100 text-purple-600',
-  INTERNSHIP: 'bg-blue-100 text-blue-600',
-  ACTIVITY: 'bg-emerald-100 text-emerald-600',
-  ETC: 'bg-zinc-100 text-zinc-500',
-};
+const TYPE_BADGE = 'bg-orange-50 text-orange-500 border border-orange-100';
 
-// 컴포넌트 외부 상수 — 모듈 로드 시 한 번만 실행
 const TODAY_MS = new Date().setHours(0, 0, 0, 0);
 
 function calcDDay(dateStr: string): number {
@@ -45,22 +38,44 @@ export default function PurposePanel({ purposes }: Props) {
         ) : (
           purposes.map((p) => {
             const dDay = calcDDay(p.date);
-            const dDayLabel = dDay < 0
+            const isPast = dDay <= 0;
+            const dDayLabel = isPast
               ? `D+${Math.abs(dDay)}`
-              : dDay === 0 ? 'D-Day' : `D-${dDay}`;
-            const dDayColor = dDay < 0
+              : `D-${dDay}`; 
+            const dDayColor = isPast
               ? 'text-zinc-300'
-              : dDay <= 7 ? 'text-rose-500' : 'text-zinc-700';
+              : dDay <= 7
+                ? 'text-orange-500'
+                : 'text-zinc-700';
+
+            const hasLink = !!p.link;
+            const openLink = () => {
+              if (hasLink) window.open(p.link, '_blank', 'noopener,noreferrer');
+            };
 
             return (
               <motion.div
                 key={p.purposeId}
                 initial={{ opacity: 0, y: 4 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="rounded-2xl border border-zinc-100 p-4 hover:border-zinc-200 transition-colors bg-zinc-50"
+                onClick={openLink}
+                role={hasLink ? 'link' : undefined}
+                tabIndex={hasLink ? 0 : undefined}
+                onKeyDown={(e) => {
+                  if (hasLink && (e.key === 'Enter' || e.key === ' ')) {
+                    e.preventDefault();
+                    openLink();
+                  }
+                }}
+                className={[
+                  'rounded-2xl border border-zinc-100 p-4 bg-zinc-50 transition-colors',
+                  hasLink
+                    ? 'cursor-pointer hover:border-orange-300 hover:bg-orange-50/40'
+                    : 'hover:border-zinc-200',
+                ].join(' ')}
               >
                 <div className="flex items-center justify-between mb-2">
-                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${TYPE_COLOR[p.type]}`}>
+                  <span className={`text-[10px] font-bold px-2.5 py-0.5 rounded-md ${TYPE_BADGE}`}>
                     {TYPE_OPTIONS.find((t) => t.value === p.type)?.label ?? p.type}
                   </span>
                   <span className={`text-sm font-black ${dDayColor}`}>
@@ -68,17 +83,23 @@ export default function PurposePanel({ purposes }: Props) {
                   </span>
                 </div>
 
-                <p className="text-sm font-bold text-zinc-800 mb-2 truncate">{p.name}</p>
+                <div className="flex items-center gap-1.5 mb-2">
+                  <p className="text-sm font-bold text-zinc-800 truncate">{p.name}</p>
+                </div>
 
                 <div className="flex items-center gap-1.5 flex-wrap">
-                  {p.goal.split(/[,/+]/).map((kw, i) => (
-                    <span
-                      key={i}
-                      className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-white border border-zinc-200 text-zinc-500"
-                    >
-                      {kw.trim()}
-                    </span>
-                  ))}
+                  {p.goal.split(/[,/+]/).map((kw, i) => {
+                    const label = kw.trim();
+                    if (!label) return null;
+                    return (
+                      <span
+                        key={i}
+                        className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-orange-50 text-orange-500 border border-orange-100/60"
+                      >
+                        {label}
+                      </span>
+                    );
+                  })}
                 </div>
 
                 <p className="text-[10px] text-zinc-400 mt-2">{p.date}</p>

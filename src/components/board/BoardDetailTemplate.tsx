@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { api } from '../../apis/api';
 import Toast from '../Toast';
 import type { PurposeListResponse } from '../../types/calendar';
+import { ensureSchedule, pickDomain } from '../../apis/studySchedule';
 
 export interface BoardDetailData {
   id: string | number;
@@ -58,7 +59,6 @@ export default function BoardDetailTemplate({ category, data }: BoardDetailTempl
 
   const { name: categoryName, path: basePath, type: purposeType } = getCategoryInfo(category);
 
-  // 마운트 시 기존 목표 조회 → 이미 설정됐으면 버튼 상태 반영
   useEffect(() => {
     if (!data) return;
     api.get<PurposeListResponse>('/api/purposes')
@@ -101,11 +101,28 @@ export default function BoardDetailTemplate({ category, data }: BoardDetailTempl
       goal: `${categoryName} 지원`,
     };
 
+    console.log('[Goal] POST /api/purposes 요청:', body);
+
     try {
       const res = await api.post('/api/purposes', body);
       console.log('[Goal] POST /api/purposes 응답:', res.data);
       setGoalSet(true);
       showToast('목표로 설정했습니다', 'success', data.title, '🎯');
+
+      // tags 중 학습 도메인이 있으면 사용, 없으면 undefined → goal 폴백
+      const domain = pickDomain(...(data.tags ?? []));
+
+      // 일정 생성은 백그라운드 — members 없음
+      ensureSchedule(
+        {
+          purposeId: res.data.purposeId,
+          name: res.data.name,
+          goal: res.data.goal,
+          date: res.data.date,
+        },
+        [],
+        domain,
+      ).catch((e) => console.error('[Schedule] 백그라운드 생성 실패:', e));
     } catch (e: unknown) {
       console.error('[Goal] POST /api/purposes 실패:', e);
       if (e && typeof e === 'object' && 'response' in e) {

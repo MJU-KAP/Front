@@ -1,6 +1,7 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { api } from '../../apis/api';
+import { ensureSchedule, decodeLinks } from '../../apis/studySchedule';
 import CalendarGrid from '../../components/calendar/CalendarGrid';
 import StudyDetailPanel from '../../components/calendar/StudyDetailPanel';
 import PurposePanel from '../../components/calendar/PurposePanel';
@@ -10,38 +11,7 @@ import type {
   StudySchedule,
 } from '../../types/calendar';
 
-const DUMMY_STUDY_SCHEDULES: StudySchedule[] = [
-  {
-    scheduleId: 1,
-    date: '2026-06-03',
-    topic: 'HTML/CSS 기초',
-    description: 'Flexbox와 Grid 레이아웃의 핵심 개념을 학습합니다. 실무에서 자주 쓰이는 반응형 레이아웃 패턴을 익히고, 직접 간단한 카드 컴포넌트를 만들어봅니다.',
-    links: [
-      { type: 'youtube', url: 'https://www.youtube.com/watch?v=phWxA89Dy94', title: 'Flexbox in 100 Seconds' },
-      { type: 'blog', url: 'https://css-tricks.com/snippets/css/a-guide-to-flexbox/', title: 'A Complete Guide to Flexbox — CSS Tricks' },
-    ],
-  },
-  {
-    scheduleId: 2,
-    date: '2026-06-10',
-    topic: 'JavaScript 비동기 처리',
-    description: 'Promise, async/await의 동작 원리를 이해하고 실제 API 호출에 적용하는 방법을 학습합니다. fetch와 axios의 차이점도 비교해봅니다.',
-    links: [
-      { type: 'youtube', url: 'https://www.youtube.com/watch?v=PoRJizFvM7s', title: 'Async Await - JavaScript Tutorial' },
-      { type: 'blog', url: 'https://javascript.info/async-await', title: 'Async/await - javascript.info' },
-    ],
-  },
-  {
-    scheduleId: 3,
-    date: '2026-06-17',
-    topic: 'React 상태 관리',
-    description: 'useState, useEffect의 심화 활용법과 전역 상태 관리 도구(Zustand)를 학습합니다. 현재 프로젝트에 적용된 패턴을 직접 분석해봅니다.',
-    links: [
-      { type: 'youtube', url: 'https://www.youtube.com/watch?v=O6P86uwfdR0', title: 'React State Management Tutorial' },
-      { type: 'blog', url: 'https://docs.pmnd.rs/zustand/getting-started/introduction', title: 'Zustand 공식 문서' },
-    ],
-  },
-];
+const TAG_RE = /^\[(.+?)\]\s*(.+)$/;
 
 export default function CalendarPage() {
   const today = new Date();
@@ -50,10 +20,12 @@ export default function CalendarPage() {
 
   const [purposes, setPurposes] = useState<Purpose[]>([]);
   const [events, setEvents] = useState<CalendarEvent[]>([]);
-  const [studySchedules] = useState<StudySchedule[]>(DUMMY_STUDY_SCHEDULES);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
+  const [generating, setGenerating] = useState(false);
+
+  const triedFor = useRef<Set<number>>(new Set());
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -77,6 +49,56 @@ export default function CalendarPage() {
     fetchData();
   }, [fetchData]);
 
+  // 목표는 있는데 그 목표의 일정이 없는 경우에만 생성
+  useEffect(() => {
+    if (loading || generating) return;
+    if (!purposes.length) return;
+
+    const hasSchedule = (p: Purpose) =>
+      events.some((ev) => ev.title?.startsWith(`[${p.name}]`));
+
+    const target = purposes.find(
+      (p) => !hasSchedule(p) && !triedFor.current.has(p.purposeId),
+    );
+    if (!target) return;
+
+    triedFor.current.add(target.purposeId);
+    setGenerating(true);
+    console.log('[Calendar] 일정 없는 목표 발견 → 생성:', target.name);
+
+    ensureSchedule({
+      purposeId: target.purposeId,
+      name: target.name,
+      goal: target.goal,
+      date: target.date,
+    })
+      .then(() => fetchData())
+      .catch((e) => console.error('[Calendar] 일정 생성 실패:', e))
+      .finally(() => setGenerating(false));
+  }, [loading, generating, purposes, events, fetchData]);
+
+  // /api/calendar 이벤트에서 학습 일정 복원 (링크는 decodeLinks로 분리)
+  const studySchedules = useMemo<StudySchedule[]>(() => {
+    return events
+      .filter((ev) => TAG_RE.test(ev.title))
+      .map((ev) => {
+        const m = ev.title.match(TAG_RE);
+        const topic = m ? m[2].trim() : ev.title;
+        return {
+          scheduleId: ev.calendarId,
+          date: ev.eventDate.slice(0, 10),
+          topic,
+          description: ev.description ?? '',
+          links: decodeLinks(ev.link),   // ★ 유튜브+블로그 모두 복원
+        };
+      });
+  }, [events]);
+
+  const plainEvents = useMemo(
+    () => events.filter((ev) => !TAG_RE.test(ev.title)),
+    [events],
+  );
+
   const handleDateClick = (date: string) => {
     setSelectedDate((prev) => (prev === date ? null : date));
   };
@@ -98,7 +120,6 @@ export default function CalendarPage() {
     <div className="min-h-screen bg-zinc-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
 
-        {/* 페이지 헤더 */}
         <motion.div
           initial={{ opacity: 0, y: -8 }}
           animate={{ opacity: 1, y: 0 }}
@@ -108,7 +129,13 @@ export default function CalendarPage() {
           <p className="text-sm text-zinc-400 mt-1">날짜를 클릭해 AI 학습 일정과 자료를 확인하세요</p>
         </motion.div>
 
-        {/* 에러 */}
+        {generating && (
+          <div className="mb-6 flex items-center gap-3 bg-orange-50 border border-orange-200 rounded-2xl px-5 py-3">
+            <div className="w-4 h-4 border-2 border-orange-500 border-t-transparent rounded-full animate-spin" />
+            <p className="text-sm text-orange-600 font-medium">목표에 맞는 학습 일정을 생성하는 중입니다...</p>
+          </div>
+        )}
+
         {error !== null && (
           <div className="mb-6 flex items-center justify-between bg-rose-50 border border-rose-200 rounded-2xl px-5 py-3">
             <p className="text-sm text-rose-600 font-medium">{error}</p>
@@ -120,10 +147,8 @@ export default function CalendarPage() {
 
         <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-6">
 
-          {/* 왼쪽: 캘린더 */}
           <div className="flex flex-col gap-3">
 
-            {/* 월 네비 — 제목 옆에 붙임 */}
             <div className="flex items-center gap-3">
               <h2 className="text-xl font-black text-zinc-900">{year}년 {month}월</h2>
               <button
@@ -160,7 +185,7 @@ export default function CalendarPage() {
               <CalendarGrid
                 year={year}
                 month={month}
-                events={events}
+                events={plainEvents}
                 purposes={purposes}
                 studySchedules={studySchedules}
                 selectedDate={selectedDate}
@@ -169,7 +194,6 @@ export default function CalendarPage() {
               />
             )}
 
-            {/* 범례 */}
             <div className="flex items-center gap-4 px-1">
               <div className="flex items-center gap-1.5">
                 <div className="w-2.5 h-2.5 rounded-sm bg-orange-200" />
@@ -182,7 +206,6 @@ export default function CalendarPage() {
             </div>
           </div>
 
-          {/* 오른쪽: 상세 패널 또는 목표 패널 */}
           <div className="flex flex-col gap-4">
             <AnimatePresence mode="wait">
               {selectedDate !== null ? (
@@ -196,7 +219,7 @@ export default function CalendarPage() {
                   <StudyDetailPanel
                     selectedDate={selectedDate}
                     studySchedule={selectedStudy}
-                    events={events}
+                    events={plainEvents}
                     onClose={() => setSelectedDate(null)}
                   />
                 </motion.div>
@@ -218,7 +241,6 @@ export default function CalendarPage() {
               )}
             </AnimatePresence>
 
-            {/* 목표 패널 — 항상 하단에 */}
             <PurposePanel purposes={purposes} />
           </div>
         </div>

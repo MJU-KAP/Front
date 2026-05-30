@@ -6,6 +6,7 @@ import InsightModal from './InsightModal';
 import { api } from '../../../apis/api';
 import Toast from '../../../components/Toast';
 import type { PurposeListResponse } from '../../../types/calendar';
+import { ensureSchedule, buildMembers, pickDomain, type UserSkill } from '../../../apis/studySchedule';
 
 interface ToastState {
   title: string;
@@ -39,9 +40,7 @@ function ActionPlanCard({
       onMouseEnter={() => setHoveredPlan(plan.id)}
       onMouseLeave={() => setHoveredPlan(null)}
       className={`rounded-2xl border transition-all duration-150
-        ${isRelated
-          ? 'bg-orange-50 border-orange-400 shadow-md scale-[1.02]'
-          : 'bg-zinc-50 border-zinc-100 hover:border-orange-200'}
+        ${isRelated ? 'bg-orange-50 border-orange-400 shadow-md scale-[1.02]' : 'bg-zinc-50 border-zinc-100 hover:border-orange-200'}
         ${isDimmed ? 'opacity-30' : 'opacity-100'}
       `}
     >
@@ -53,8 +52,7 @@ function ActionPlanCard({
           <span className="text-xs font-bold px-2.5 py-1 rounded-md text-orange-500 bg-white shadow-sm">
             {plan.category || '활동'}
           </span>
-          <span className={`text-xs font-bold px-2.5 py-1 rounded-md
-            ${isRelated ? 'text-white bg-orange-500' : 'text-emerald-500 bg-emerald-50'}`}>
+          <span className={`text-xs font-bold px-2.5 py-1 rounded-md ${isRelated ? 'text-white bg-orange-500' : 'text-emerald-500 bg-emerald-50'}`}>
             {plan.skillTarget}
           </span>
         </div>
@@ -83,7 +81,7 @@ function ActionPlanCard({
 
 interface Props {
   plans: ActionPlan[];
-  insight: AiInsightData;
+  insight: AiInsightData & { user_skills?: UserSkill[] };
   hoveredSkill: string | null;
   hoveredPlan: number | null;
   setHoveredPlan: (id: number | null) => void;
@@ -102,9 +100,7 @@ export default function ActionPlanSidebar({ plans, insight, hoveredSkill, hovere
       .then((res) => {
         const existingNames = res.data.items.map((p) => p.name);
         const matched = plans.find((plan) => existingNames.includes(plan.title));
-        if (matched) {
-          setGoalPlanId(matched.id);
-        }
+        if (matched) setGoalPlanId(matched.id);
       })
       .catch((e) => console.error('[Goal] GET /api/purposes 실패:', e));
   }, [plans]);
@@ -134,15 +130,32 @@ export default function ActionPlanSidebar({ plans, insight, hoveredSkill, hovere
       name: plan.title,
       date,
       link: plan.url ?? '',
-      type: 'ETC' as const,
+      type: 'ETC',
       goal: plan.skillTarget ?? '역량 강화',
     };
+
+    console.log('[Goal] POST /api/purposes 요청:', body);
 
     try {
       const res = await api.post('/api/purposes', body);
       console.log('[Goal] POST /api/purposes 응답:', res.data);
       setGoalPlanId(plan.id);
       showToast('목표로 설정했습니다', 'success', plan.title, '🎯');
+
+      // 도메인: plan.skillsCovered(있으면) → skillTarget 순으로 후보 검사
+      const domain = pickDomain(plan.skillsCovered?.[0], plan.skillTarget);
+
+      // 일정 생성은 백그라운드 — 숙련도 전달 + 도메인 명시
+      ensureSchedule(
+        {
+          purposeId: res.data.purposeId,
+          name: res.data.name,
+          goal: res.data.goal,
+          date: res.data.date,
+        },
+        buildMembers(insight?.user_skills),
+        domain,
+      ).catch((e) => console.error('[Schedule] 백그라운드 생성 실패:', e));
     } catch (e: unknown) {
       console.error('[Goal] POST /api/purposes 실패:', e);
       if (e && typeof e === 'object' && 'response' in e) {

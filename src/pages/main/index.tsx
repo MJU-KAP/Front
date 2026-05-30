@@ -87,12 +87,12 @@ export default function MainPage() {
             </h2>
             <p className="text-zinc-500 text-lg md:text-xl max-w-2xl mx-auto font-normal leading-relaxed">
               분석된 핵심 역량을 정의하고, <br />
-              맞춤형 대외활동 추천까지 <u>Next Plan</u>에서 확인하세요.
+              맞춤형 일정까지 <u>Next Plan</u>에서 확인하세요.
             </p>
           </motion.div>
 
           <div className="flex flex-wrap justify-center gap-6 w-full">
-            {['🎯 AI 역량 분석', '🧩 맞춤형 추천', '🧱 테트리스 시각화'].map(
+            {['🎯 AI 역량 분석', '🧩 맞춤형 일정', '🧱 테트리스 시각화'].map(
               (text, index) => (
                 <motion.div
                   key={text}
@@ -121,16 +121,6 @@ export default function MainPage() {
               당신의 성장을 시각화합니다. <br />
               _Team 조조이백배_
             </p>
-          </div>
-          <div className="flex gap-8">
-            {['GitHub', 'Email', 'LinkedIn'].map((link) => (
-              <button
-                key={link}
-                className="hover:text-orange-500 transition-colors text-sm font-medium"
-              >
-                {link}
-              </button>
-            ))}
           </div>
         </div>
       </footer>
