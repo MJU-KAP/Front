@@ -78,13 +78,34 @@ export default function ResultPage() {
             skills: unifiedSkills,
             actionPlans: (parsed.recommendations || []).map((r: ParsedRecommendation) => {
               const targetSkill = r.skills_covered?.[0];
-              const gapData = parsed.skill_gaps?.find((g: ParsedGap) => g.name === targetSkill);
-              const amount = gapData ? gapData.gap : 0; 
+            
+              let amount = 0;
+              let boostSkill = targetSkill;
+            
+              const boostEntries = r.boost_detail ? Object.entries(r.boost_detail) : [];
+            
+              if (boostEntries.length > 0) {
+                // boost_detail에 값이 있으면 그걸 사용 (정확한 상승량)
+                if (targetSkill && typeof r.boost_detail![targetSkill] === 'number') {
+                  amount = r.boost_detail![targetSkill];
+                } else {
+                  // skills_covered[0]와 키가 다르면 boost_detail 첫 항목 사용
+                  const [k, v] = boostEntries[0];
+                  boostSkill = k;
+                  amount = v;
+                }
+              } else {
+                // boost_detail이 비어있으면 gap의 약 40%로 폴백 (1/3~1/2 사이)
+                const gapData = parsed.skill_gaps?.find((g: ParsedGap) => g.name === targetSkill);
+                amount = gapData ? Math.round(gapData.gap * 0.4) : 0;
+              }
             
               return {
                 id: r.rank,
                 category: r.type || "활동",
-                skillTarget: `${targetSkill || '기타'} +${amount}%`,
+                skillTarget: `${boostSkill || '기타'} +${amount}%`,
+                targetSkillName: boostSkill || '',
+                targetAmount: amount,
                 title: r.title,
                 desc: r.description,
                 deadline: `D-${r.deadline_days || 0}`,
@@ -135,13 +156,9 @@ export default function ResultPage() {
 
   const hoveredPlanData = useMemo(() => {
     if (hoveredPlan === null || !data) return null;
-    
     const activePlan = data.actionPlans.find(p => p.id === hoveredPlan);
-    if (activePlan) {
-      const match = activePlan.skillTarget.match(/([a-zA-Z0-9가-힣.]+)\s*\+(\d+)%/);
-      if (match) {
-        return { skill: match[1].trim(), amount: parseInt(match[2], 10) };
-      }
+    if (activePlan?.targetSkillName) {
+      return { skill: activePlan.targetSkillName, amount: activePlan.targetAmount ?? 0 };
     }
     return null;
   }, [hoveredPlan, data]);

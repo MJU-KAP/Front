@@ -40,6 +40,8 @@ export interface ActionPlan {
   deadline: string;
   url?: string;
   skillsCovered?: string[];
+  targetSkillName?: string;
+  targetAmount?: number;
 }
 
 export interface AnalysisData {
@@ -82,4 +84,5 @@ export interface ParsedRecommendation {
   description: string;
   deadline_days?: number;
   url?: string;
+  boost_detail?: Record<string, number>;
 }
