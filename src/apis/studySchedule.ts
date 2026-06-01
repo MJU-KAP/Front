@@ -15,17 +15,16 @@ export interface StudyQuiz { question: string; answer: string }
 
 interface CalendarItem {
   calendarId: number;
+  purposeId: number;
   eventDate: string;
   title: string;
   description: string;
   link: string;
 }
 
-// ── checklist+quiz를 link 필드에 JSON으로 저장/복원 ─────────
 export function encodeExtra(checklist: string[], quiz?: StudyQuiz): string {
   return JSON.stringify({ c: checklist ?? [], q: quiz ?? null });
 }
-// 옛 데이터(URL 등 JSON 아님)는 파싱 실패 → 빈 체크리스트로 안전 처리
 export function decodeExtra(raw: string | undefined): { checklist: string[]; quiz?: StudyQuiz } {
   if (!raw) return { checklist: [] };
   try {
@@ -39,7 +38,6 @@ export function decodeExtra(raw: string | undefined): { checklist: string[]; qui
   }
 }
 
-// ── 도메인 판별 ──────────────────────────────────
 const KNOWN_DOMAINS = [
   '알고리즘', '자료구조', 'Android SDK', 'Android', 'Git', 'REST API 설계', 'REST API',
   'Kotlin', 'Java', 'Coroutine', 'MVVM', 'React', 'JavaScript', 'TypeScript',
@@ -81,26 +79,25 @@ const normalizeDate = (raw: string) => {
   return fmt(d);
 };
 
-const tagFor = (p: PurposeLike) => `[${p.name}]`;
+export async function deletePurpose(purposeId: number): Promise<void> {
+  await api.delete(`/api/purposes/${purposeId}`);
+}
 
 export async function ensureSchedule(
   purpose: PurposeLike,
   members: unknown = [],
   domain?: string,
 ): Promise<ScheduleItem[]> {
-  const tag = tagFor(purpose);
-
-  // 1) 이미 생성된 일정 복원 (옛 데이터는 decodeExtra가 빈 체크리스트로 처리)
   try {
     const res = await api.get<{ items: CalendarItem[] }>('/api/calendar');
-    const existing = res.data.items.filter((c) => c.title?.startsWith(tag));
+    const existing = res.data.items.filter((c) => c.purposeId === purpose.purposeId);
     if (existing.length) {
       return existing.map((c, i) => {
         const extra = decodeExtra(c.link);
         return {
           scheduleId: i + 1,
           date: c.eventDate,
-          topic: c.title.replace(tag, '').trim(),
+          topic: c.title,
           description: c.description,
           checklist: extra.checklist,
           quiz: extra.quiz,
@@ -111,7 +108,6 @@ export async function ensureSchedule(
     console.error('[Schedule] GET /api/calendar 실패:', e);
   }
 
-  // 2) 도메인 결정 후 생성
   const finalDomain = domain?.trim() || resolveDomain(purpose.type, purpose.goal, purpose.name);
   const withLinks = !!finalDomain;
 
@@ -123,12 +119,12 @@ export async function ensureSchedule(
     withLinks,
   });
 
-  // 3) 캘린더 저장 (checklist+quiz를 link 필드에 JSON으로)
   const results = await Promise.allSettled(
     items.map((it) =>
       api.post('/api/calendar', {
+        purposeId: purpose.purposeId,
         eventDate: it.date,
-        title: `${tag} ${it.topic}`,
+        title: it.topic,
         description: it.description?.trim() || it.topic,
         link: encodeExtra(it.checklist, it.quiz),
       }),

@@ -17,6 +17,7 @@ export interface PurposeListResponse {
 
 export interface CalendarEvent {
   calendarId: number;
+  purposeId: number;
   eventDate: string;
   title: string;
   description: string;
@@ -60,6 +61,6 @@ export interface StudySchedule {
   date: string;
   topic: string;
   description: string;
-  checklist: string[];   // 오늘 학습 핵심 2~3개
-  quiz?: StudyQuiz;       // 마지막 퀴즈 1개
+  checklist: string[];
+  quiz?: StudyQuiz;
 }

@@ -6,7 +6,7 @@ import InsightModal from './InsightModal';
 import { api } from '../../../apis/api';
 import Toast from '../../../components/Toast';
 import type { PurposeListResponse } from '../../../types/calendar';
-import { ensureSchedule, buildMembers, pickDomain, type UserSkill } from '../../../apis/studySchedule';
+import { ensureSchedule, buildMembers, pickDomain, deletePurpose, type UserSkill } from '../../../apis/studySchedule';
 
 interface ToastState {
   title: string;
@@ -27,9 +27,7 @@ function ActionPlanCard({
   isGoalSet: boolean;
 }) {
   const handleCardClick = () => {
-    if (plan.url) {
-      window.open(plan.url, '_blank', 'noopener,noreferrer');
-    }
+    if (plan.url) window.open(plan.url, '_blank', 'noopener,noreferrer');
   };
 
   return (
@@ -44,10 +42,7 @@ function ActionPlanCard({
         ${isDimmed ? 'opacity-30' : 'opacity-100'}
       `}
     >
-      <div
-        onClick={handleCardClick}
-        className={`p-5 ${plan.url ? 'cursor-pointer' : ''}`}
-      >
+      <div onClick={handleCardClick} className={`p-5 ${plan.url ? 'cursor-pointer' : ''}`}>
         <div className="flex items-center gap-2 mb-3">
           <span className="text-xs font-bold px-2.5 py-1 rounded-md text-orange-500 bg-white shadow-sm">
             {plan.category || '활동'}
@@ -90,6 +85,7 @@ interface Props {
 export default function ActionPlanSidebar({ plans, insight, hoveredSkill, hoveredPlan, setHoveredPlan }: Props) {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [goalPlanId, setGoalPlanId] = useState<number | null>(null);
+  const [existingPurpose, setExistingPurpose] = useState<{ purposeId: number; name: string } | null>(null);
   const [toastShow, setToastShow] = useState(false);
   const [toastState, setToastState] = useState<ToastState>({ title: '' });
   const navigate = useNavigate();
@@ -98,34 +94,48 @@ export default function ActionPlanSidebar({ plans, insight, hoveredSkill, hovere
     if (!plans?.length) return;
     api.get<PurposeListResponse>('/api/purposes')
       .then((res) => {
-        const existingNames = res.data.items.map((p) => p.name);
-        const matched = plans.find((plan) => existingNames.includes(plan.title));
-        if (matched) setGoalPlanId(matched.id);
+        const items = res.data.items;
+        setExistingPurpose(items.length > 0 ? { purposeId: items[0].purposeId, name: items[0].name } : null);
+        const matched = plans.find((plan) => items.some((p) => p.name === plan.title));
+        setGoalPlanId(matched ? matched.id : null);
       })
       .catch((e) => console.error('[Goal] GET /api/purposes 실패:', e));
   }, [plans]);
 
-  const showToast = (
-    title: string,
-    type: 'warning' | 'success' | 'info',
-    description?: string,
-    icon?: string,
-  ) => {
+  const showToast = (title: string, type: 'warning' | 'success' | 'info', description?: string, icon?: string) => {
     setToastState({ title, type, description, icon });
     setToastShow(true);
   };
 
   const handleSetGoal = async (plan: ActionPlan) => {
-    if (goalPlanId !== null) {
-      showToast('다른 목표가 이미 설정되어 있습니다', 'warning', '하나의 목표만 설정할 수 있어요', '⚠️');
+    // 이 plan이 이미 목표면 안내만
+    if (goalPlanId === plan.id) {
+      showToast('이미 목표로 설정되어 있습니다', 'warning', '캘린더에서 확인해보세요', '⚠️');
       return;
     }
-  
+
+    // 다른 목표가 이미 있으면 교체 확인 → 삭제
+    if (existingPurpose) {
+      const ok = window.confirm(
+        `이미 '${existingPurpose.name}' 목표가 설정되어 있어요.\n기존 목표를 삭제하고 이 활동으로 바꿀까요?\n(기존 학습 일정도 함께 삭제됩니다)`,
+      );
+      if (!ok) return;
+      try {
+        await deletePurpose(existingPurpose.purposeId);
+        setExistingPurpose(null);
+        setGoalPlanId(null);
+      } catch (e) {
+        console.error('[Goal] 기존 목표 삭제 실패:', e);
+        showToast('기존 목표 삭제에 실패했어요', 'warning', '잠시 후 다시 시도해주세요', '❌');
+        return;
+      }
+    }
+
     const dateMatch = plan.deadline?.match(/\d{4}-\d{2}-\d{2}/);
     const date = dateMatch
       ? dateMatch[0]
       : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
-  
+
     const body = {
       name: plan.title,
       date,
@@ -133,25 +143,18 @@ export default function ActionPlanSidebar({ plans, insight, hoveredSkill, hovere
       type: 'ETC',
       goal: plan.skillTarget ?? '역량 강화',
     };
-  
+
     try {
       const res = await api.post('/api/purposes', body);
       setGoalPlanId(plan.id);
+      setExistingPurpose({ purposeId: res.data.purposeId, name: res.data.name });
       showToast('목표로 설정했습니다', 'success', plan.title, '🎯');
-  
-      // 학습 도메인을 직접 확정해 전달 (ETC라도 학습 모드로 감)
+
       const domain = pickDomain(plan.skillsCovered?.[0], plan.skillTarget);
-  
       ensureSchedule(
-        {
-          purposeId: res.data.purposeId,
-          name: res.data.name,
-          goal: res.data.goal,
-          date: res.data.date,
-          type: 'ETC',
-        },
+        { purposeId: res.data.purposeId, name: res.data.name, goal: res.data.goal, date: res.data.date, type: 'ETC' },
         buildMembers(insight?.user_skills),
-        domain,   // 도메인 직접 전달 → 잡히면 학습, 못 잡으면 resolveDomain이 ETC 키워드로 재판별
+        domain,
       ).catch((e) => console.error('[Schedule] 백그라운드 생성 실패:', e));
     } catch (e: unknown) {
       console.error('[Goal] POST /api/purposes 실패:', e);
@@ -208,29 +211,19 @@ export default function ActionPlanSidebar({ plans, insight, hoveredSkill, hovere
               {insight?.summary || '분석된 인사이트가 없습니다.'}
             </p>
             <div className="mt-2 text-left">
-              <button
-                onClick={() => setIsModalOpen(true)}
-                className="inline-flex items-center px-3 py-1.5 bg-orange-50 hover:bg-orange-100 text-orange-500 text-xs font-bold rounded-full transition-colors"
-              >
+              <button onClick={() => setIsModalOpen(true)} className="inline-flex items-center px-3 py-1.5 bg-orange-50 hover:bg-orange-100 text-orange-500 text-xs font-bold rounded-full transition-colors">
                 + 더보기
               </button>
             </div>
           </div>
 
-          <button
-            onClick={() => navigate('/mypage')}
-            className="w-full py-4 bg-orange-500 text-white font-bold rounded-xl hover:bg-orange-600 transition-colors shadow-md shadow-orange-500/20"
-          >
+          <button onClick={() => navigate('/mypage')} className="w-full py-4 bg-orange-500 text-white font-bold rounded-xl hover:bg-orange-600 transition-colors shadow-md shadow-orange-500/20">
             분석 결과 저장하기
           </button>
         </div>
       </div>
 
-      <InsightModal
-        isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
-        insight={insight}
-      />
+      <InsightModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} insight={insight} />
 
       <Toast
         show={toastShow}

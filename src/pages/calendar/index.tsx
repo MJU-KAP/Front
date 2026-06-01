@@ -12,14 +12,22 @@ import type {
   StudySchedule,
 } from '../../types/calendar';
 
-const TAG_RE = /^\[(.+?)\]\s*(.+)$/;
-
 interface ToastState {
   title: string;
   description?: string;
   icon?: string;
   type?: 'warning' | 'success' | 'info';
 }
+
+const isStudyLink = (link: string | undefined) => {
+  if (!link) return false;
+  try {
+    const o = JSON.parse(link);
+    return o && typeof o === 'object' && 'c' in o;
+  } catch {
+    return false;
+  }
+};
 
 export default function CalendarPage() {
   const today = new Date();
@@ -63,13 +71,19 @@ export default function CalendarPage() {
 
   useEffect(() => { fetchData(); }, [fetchData]);
 
-  // 목표는 있는데 일정이 없으면 생성 (목표별)
+  // 현재 존재하는 목표의 purposeId 집합
+  const validPurposeIds = useMemo(
+    () => new Set(purposes.map((p) => p.purposeId)),
+    [purposes],
+  );
+
+  // 목표는 있는데 학습 일정이 없으면 생성
   useEffect(() => {
     if (loading || generating) return;
     if (!purposes.length) return;
 
     const hasSchedule = (p: Purpose) =>
-      events.some((ev) => ev.title?.startsWith(`[${p.name}]`));
+      events.some((ev) => ev.purposeId === p.purposeId && isStudyLink(ev.link));
 
     const target = purposes.find(
       (p) => !hasSchedule(p) && !triedFor.current.has(p.purposeId),
@@ -95,8 +109,9 @@ export default function CalendarPage() {
             : undefined;
         if (status === 429) {
           showToast('생성 요청이 많아요', 'warning', '잠시 후 다시 시도해주세요', '⏳');
-          // 한도 초과는 메모리 가드를 풀어 다음 진입 때 재시도 가능하게
           triedFor.current.delete(target.purposeId);
+        } else if (status === 403 || status === 401) {
+          showToast('로그인이 필요해요', 'warning', '다시 로그인 후 시도해주세요', '🔒');
         } else {
           showToast('학습 일정 생성에 실패했어요', 'warning', '잠시 후 다시 시도해주세요', '❌');
         }
@@ -104,27 +119,33 @@ export default function CalendarPage() {
       .finally(() => setGenerating(false));
   }, [loading, generating, purposes, events, fetchData]);
 
+  // ★ 유효한 목표에 연결된 일정만 사용 (고아 일정 자동 숨김)
+  const validEvents = useMemo(
+    () => events.filter((ev) => validPurposeIds.has(ev.purposeId)),
+    [events, validPurposeIds],
+  );
+
+  // 학습 일정 복원
   const studySchedules = useMemo<StudySchedule[]>(() => {
-    return events
-      .filter((ev) => TAG_RE.test(ev.title))
+    return validEvents
+      .filter((ev) => isStudyLink(ev.link))
       .map((ev) => {
-        const m = ev.title.match(TAG_RE);
-        const topic = m ? m[2].trim() : ev.title;
         const extra = decodeExtra(ev.link);
         return {
           scheduleId: ev.calendarId,
           date: ev.eventDate.slice(0, 10),
-          topic,
+          topic: ev.title,
           description: ev.description ?? '',
           checklist: extra.checklist,
           quiz: extra.quiz,
         };
       });
-  }, [events]);
+  }, [validEvents]);
 
+  // 일반 일정
   const plainEvents = useMemo(
-    () => events.filter((ev) => !TAG_RE.test(ev.title)),
-    [events],
+    () => validEvents.filter((ev) => !isStudyLink(ev.link)),
+    [validEvents],
   );
 
   const handleDateClick = (date: string) => {
@@ -223,7 +244,7 @@ export default function CalendarPage() {
               )}
             </AnimatePresence>
 
-            <PurposePanel purposes={purposes} />
+            <PurposePanel purposes={purposes} onChanged={fetchData} />
           </div>
         </div>
       </div>

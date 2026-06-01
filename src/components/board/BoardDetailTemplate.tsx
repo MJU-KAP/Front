@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { api } from '../../apis/api';
 import Toast from '../Toast';
 import type { PurposeListResponse } from '../../types/calendar';
-import { ensureSchedule } from '../../apis/studySchedule';
+import { ensureSchedule, pickDomain, deletePurpose } from '../../apis/studySchedule';
 
 export interface BoardDetailData {
   id: string | number;
@@ -52,9 +52,15 @@ function getCategoryInfo(cat: string): { name: string; path: string; type: Purpo
   }
 }
 
+function calcDDay(dateStr: string): number {
+  const target = new Date(dateStr).setHours(0, 0, 0, 0);
+  const today = new Date().setHours(0, 0, 0, 0);
+  return Math.ceil((target - today) / 86400000);
+}
+
 export default function BoardDetailTemplate({ category, data }: BoardDetailTemplateProps) {
-  const [goalSet, setGoalSet] = useState(false);        // 이 게시물이 목표인지
-  const [hasAnyGoal, setHasAnyGoal] = useState(false);  // 다른 목표가 이미 있는지
+  const [goalSet, setGoalSet] = useState(false);
+  const [existingPurpose, setExistingPurpose] = useState<{ purposeId: number; name: string } | null>(null);
   const [toastShow, setToastShow] = useState(false);
   const [toastState, setToastState] = useState<ToastState>({ title: '' });
 
@@ -64,47 +70,55 @@ export default function BoardDetailTemplate({ category, data }: BoardDetailTempl
     if (!data) return;
     api.get<PurposeListResponse>('/api/purposes')
       .then((res) => {
-        setHasAnyGoal(res.data.items.length > 0);
-        setGoalSet(res.data.items.some((p) => p.name === data.title));
+        const items = res.data.items;
+        setExistingPurpose(items.length > 0 ? { purposeId: items[0].purposeId, name: items[0].name } : null);
+        setGoalSet(items.some((p) => p.name === data.title));
       })
       .catch((e) => console.error('[Goal] GET /api/purposes 실패:', e));
   }, [data]);
 
-  const showToast = (
-    title: string,
-    type: 'warning' | 'success' | 'info',
-    description?: string,
-    icon?: string,
-  ) => {
+  const showToast = (title: string, type: 'warning' | 'success' | 'info', description?: string, icon?: string) => {
     setToastState({ title, type, description, icon });
     setToastShow(true);
   };
 
   const handleSetGoal = async () => {
     if (!data) return;
-  
+
+    // 이 게시물이 이미 목표면 안내만
     if (goalSet) {
       showToast('이미 목표로 설정되어 있습니다', 'warning', '캘린더에서 확인해보세요', '⚠️');
       return;
     }
-    if (hasAnyGoal) {
-      showToast('다른 목표가 이미 설정되어 있습니다', 'warning', '하나의 목표만 설정할 수 있어요', '⚠️');
-      return;
-    }
-  
+
     const raw = data.deadlineDate ?? data.recruitPeriod ?? '';
     const dates = raw.match(/\d{4}-\d{2}-\d{2}/g);
     const date = dates?.length
       ? dates[dates.length - 1]
       : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
-  
+
     // 오늘까지 마감인 활동은 토스트로 차단
-    const dDay = Math.ceil((new Date(date).setHours(0,0,0,0) - new Date().setHours(0,0,0,0)) / 86400000);
-    if (dDay <= 0) {
+    if (calcDDay(date) <= 0) {
       showToast('목표로 설정할 수 없어요', 'warning', '마감일이 지난 활동이에요', '⏰');
       return;
     }
-  
+
+    // 다른 목표가 이미 있으면 교체 확인 → 삭제
+    if (existingPurpose) {
+      const ok = window.confirm(
+        `이미 '${existingPurpose.name}' 목표가 설정되어 있어요.\n기존 목표를 삭제하고 이 활동으로 바꿀까요?\n(기존 학습 일정도 함께 삭제됩니다)`,
+      );
+      if (!ok) return;
+      try {
+        await deletePurpose(existingPurpose.purposeId);
+        setExistingPurpose(null);
+      } catch (e) {
+        console.error('[Goal] 기존 목표 삭제 실패:', e);
+        showToast('기존 목표 삭제에 실패했어요', 'warning', '잠시 후 다시 시도해주세요', '❌');
+        return;
+      }
+    }
+
     const body = {
       name: data.title,
       date,
@@ -112,24 +126,18 @@ export default function BoardDetailTemplate({ category, data }: BoardDetailTempl
       type: purposeType,
       goal: `${categoryName} 지원`,
     };
-  
+
     try {
       const res = await api.post('/api/purposes', body);
       setGoalSet(true);
-      setHasAnyGoal(true);
+      setExistingPurpose({ purposeId: res.data.purposeId, name: res.data.name });
       showToast('목표로 설정했습니다', 'success', data.title, '🎯');
-  
-      // type(CONTEST/ACTIVITY 등)을 넘기면 resolveDomain이 비학습으로 처리 → 링크 없는 준비 일정
+
+      const domain = pickDomain(...(data.tags ?? []));
       ensureSchedule(
-        {
-          purposeId: res.data.purposeId,
-          name: res.data.name,
-          goal: res.data.goal,
-          date: res.data.date,
-          type: purposeType,
-        },
+        { purposeId: res.data.purposeId, name: res.data.name, goal: res.data.goal, date: res.data.date, type: purposeType },
         [],
-        // 도메인 인자 생략
+        domain,
       ).catch((e) => console.error('[Schedule] 백그라운드 생성 실패:', e));
     } catch (e: unknown) {
       console.error('[Goal] POST /api/purposes 실패:', e);
@@ -171,51 +179,35 @@ export default function BoardDetailTemplate({ category, data }: BoardDetailTempl
   return (
     <div className="max-w-6xl mx-auto p-6 bg-[#f4f5f7] min-h-screen font-sans">
 
-      {/* 브레드크럼 */}
       <div className="text-sm text-gray-500 mb-6 flex items-center gap-2.5">
-        <Link to={basePath} className="hover:text-gray-800 hover:underline transition-colors">
-          {categoryName}
-        </Link>
+        <Link to={basePath} className="hover:text-gray-800 hover:underline transition-colors">{categoryName}</Link>
         <span className="text-gray-300 text-xs">{'>'}</span>
         <span className="font-semibold text-gray-800 line-clamp-1">{data.title}</span>
       </div>
 
-      {/* 헤더 */}
       <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex flex-col md:flex-row gap-6 mb-6">
         <div className="w-full md:w-72 h-48 bg-gray-100 rounded-xl flex-shrink-0 overflow-hidden border border-gray-50">
           {data.thumbnailUrl ? (
             <img src={data.thumbnailUrl} alt={data.title} className="w-full h-full object-cover" />
           ) : (
-            <div className="w-full h-full flex items-center justify-center text-gray-400 text-sm">
-              이미지 없음
-            </div>
+            <div className="w-full h-full flex items-center justify-center text-gray-400 text-sm">이미지 없음</div>
           )}
         </div>
         <div className="flex flex-col justify-center">
           <div className="flex flex-wrap gap-2 mb-3">
             {data.tags?.map(tag => (
-              <span key={tag} className="px-3 py-1 bg-orange-50 text-orange-500 text-xs font-bold rounded-full border border-orange-100">
-                {tag}
-              </span>
+              <span key={tag} className="px-3 py-1 bg-orange-50 text-orange-500 text-xs font-bold rounded-full border border-orange-100">{tag}</span>
             ))}
           </div>
           <h1 className="text-2xl lg:text-3xl font-bold mb-3 text-gray-900">{data.title}</h1>
           <div className="flex flex-col gap-2 text-sm text-gray-500 mt-2">
-            <span className="flex items-center gap-1.5">
-              <span className="w-12 text-gray-400">주최</span>
-              {data.host}
-            </span>
-            <span className="flex items-center gap-1.5">
-              <span className="w-12 text-gray-400">활동</span>
-              {data.period}
-            </span>
+            <span className="flex items-center gap-1.5"><span className="w-12 text-gray-400">주최</span>{data.host}</span>
+            <span className="flex items-center gap-1.5"><span className="w-12 text-gray-400">활동</span>{data.period}</span>
           </div>
         </div>
       </div>
 
       <div className="flex flex-col lg:flex-row gap-6">
-
-        {/* 좌측 본문 */}
         <div className="flex-1 flex flex-col gap-6">
           <div className="bg-white p-8 rounded-2xl shadow-sm border border-gray-100">
             <h2 className="text-lg font-bold mb-4 text-gray-900">상세 소개</h2>
@@ -225,22 +217,10 @@ export default function BoardDetailTemplate({ category, data }: BoardDetailTempl
           <div className="bg-white p-8 rounded-2xl shadow-sm border border-gray-100">
             <h2 className="text-lg font-bold mb-6 text-gray-900">상세 정보</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-y-6 text-sm">
-              <div>
-                <p className="text-gray-400 mb-1">모집 기간</p>
-                <p className="font-medium text-gray-800">{data.recruitPeriod}</p>
-              </div>
-              <div>
-                <p className="text-gray-400 mb-1">모집 인원</p>
-                <p className="font-medium text-gray-800">{displayRecruitCount}</p>
-              </div>
-              <div>
-                <p className="text-gray-400 mb-1">진행 장소</p>
-                <p className="font-medium text-gray-800">{data.region || '상세 공고 참조'}</p>
-              </div>
-              <div>
-                <p className="text-gray-400 mb-1">카테고리</p>
-                <p className="font-medium text-gray-800">{categoryName}</p>
-              </div>
+              <div><p className="text-gray-400 mb-1">모집 기간</p><p className="font-medium text-gray-800">{data.recruitPeriod}</p></div>
+              <div><p className="text-gray-400 mb-1">모집 인원</p><p className="font-medium text-gray-800">{displayRecruitCount}</p></div>
+              <div><p className="text-gray-400 mb-1">진행 장소</p><p className="font-medium text-gray-800">{data.region || '상세 공고 참조'}</p></div>
+              <div><p className="text-gray-400 mb-1">카테고리</p><p className="font-medium text-gray-800">{categoryName}</p></div>
             </div>
           </div>
 
@@ -250,9 +230,7 @@ export default function BoardDetailTemplate({ category, data }: BoardDetailTempl
               <p className="text-xs text-gray-400 mb-3">우대 기술 스택</p>
               <div className="flex flex-wrap gap-2">
                 {data.tags?.map(tag => (
-                  <span key={tag} className="px-4 py-1.5 bg-orange-50 text-orange-600 text-xs font-medium rounded-full border border-orange-100/50">
-                    {tag}
-                  </span>
+                  <span key={tag} className="px-4 py-1.5 bg-orange-50 text-orange-600 text-xs font-medium rounded-full border border-orange-100/50">{tag}</span>
                 ))}
               </div>
             </div>
@@ -261,11 +239,7 @@ export default function BoardDetailTemplate({ category, data }: BoardDetailTempl
               <ul className="space-y-4">
                 <li className="flex items-start gap-3 text-sm text-gray-700">
                   <span className="text-orange-500 text-xs mt-0.5">○</span>
-                  <span>
-                    {data.region && data.region !== '정보 없음'
-                      ? `${data.region} 지역 오프라인 활동 가능자`
-                      : '활동 지역 상세 공고 참조'}
-                  </span>
+                  <span>{data.region && data.region !== '정보 없음' ? `${data.region} 지역 오프라인 활동 가능자` : '활동 지역 상세 공고 참조'}</span>
                 </li>
                 <li className="flex items-start gap-3 text-sm text-gray-700">
                   <span className="text-orange-500 text-xs mt-0.5">○</span>
@@ -282,7 +256,6 @@ export default function BoardDetailTemplate({ category, data }: BoardDetailTempl
           </div>
         </div>
 
-        {/* 우측 사이드바 */}
         <div className="w-full lg:w-[320px] flex-shrink-0">
           <div className="sticky top-6 flex flex-col gap-4">
             <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
@@ -297,7 +270,6 @@ export default function BoardDetailTemplate({ category, data }: BoardDetailTempl
                 </div>
               </div>
 
-              {/* 목표 설정 버튼 — goalSet일 때만 비활성, 나머지는 눌러서 토스트로 안내 */}
               <button
                 type="button"
                 onClick={handleSetGoal}
