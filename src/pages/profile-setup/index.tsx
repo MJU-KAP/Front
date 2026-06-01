@@ -148,6 +148,8 @@ export default function ProfileSetupPage() {
   
   const [selectedStacks, setSelectedStacks] = useState<string[]>([]);
   const [stackQuery, setStackQuery] = useState('');
+  const [stackDropdownOpen, setStackDropdownOpen] = useState(false);
+  const stackSelectRef = useRef<HTMLDivElement>(null);
   
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isInitialLoading, setIsInitialLoading] = useState(true); // 데이터 불러오는 상태
@@ -204,12 +206,35 @@ export default function ProfileSetupPage() {
     return () => document.removeEventListener('mousedown', close);
   }, [jobDropdownOpen]);
 
+  useEffect(() => {
+    if (!stackDropdownOpen) return;
+    const close = (e: MouseEvent) => {
+      if (stackSelectRef.current && !stackSelectRef.current.contains(e.target as Node)) {
+        setStackDropdownOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', close);
+    return () => document.removeEventListener('mousedown', close);
+  }, [stackDropdownOpen]);
+
+  useEffect(() => {
+    if (!stackDropdownOpen) return;
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setStackDropdownOpen(false);
+      }
+    };
+    document.addEventListener('keydown', onKeyDown);
+    return () => document.removeEventListener('keydown', onKeyDown);
+  }, [stackDropdownOpen]);
+
   const canSubmit = selectedStacks.length >= 1 && !isSubmitting;
   const selectedSet = useMemo(() => new Set(selectedStacks), [selectedStacks]);
+  const isStackSearching = stackQuery.trim().length > 0;
 
   const filteredCatalog = useMemo(() => {
     const q = stackQuery.trim().toLowerCase();
-    if (!q) return [];
+    if (!q) return TECH_CATALOG;
     return TECH_CATALOG.filter(
       (item) =>
         item.name.toLowerCase().includes(q) || item.category.toLowerCase().includes(q)
@@ -362,7 +387,7 @@ export default function ProfileSetupPage() {
               </span>
             </div>
             <p className="mb-3 text-xs text-zinc-500 sm:text-sm">
-              기술을 입력하면 연관 검색어가 표시됩니다 (최대 {MAX_STACK}개)
+              기술을 선택하거나 검색해 추가할 수 있습니다 (최대 {MAX_STACK}개)
             </p>
 
             <div
@@ -391,29 +416,42 @@ export default function ProfileSetupPage() {
               )}
             </div>
 
-            <div className="relative">
-              <span
-                className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-zinc-400"
-                aria-hidden
-              >
-                🔍
-              </span>
-              <input
-                type="search"
-                value={stackQuery}
-                onChange={(e) => setStackQuery(e.target.value)}
-                placeholder="기술 이름을 검색하세요"
-                autoComplete="off"
-                className="w-full rounded-2xl border border-zinc-200 bg-zinc-50 py-3 pl-10 pr-4 text-sm text-zinc-900 outline-none transition-colors placeholder:text-zinc-400 focus:border-orange-400 focus:bg-white focus:ring-2 focus:ring-orange-500/20"
-                aria-label="기술 스택 검색"
-              />
-            </div>
+            <div ref={stackSelectRef}>
+              <div className="relative">
+                <span
+                  className="pointer-events-none absolute left-3.5 top-1/2 z-10 -translate-y-1/2 text-zinc-400"
+                  aria-hidden
+                >
+                  🔍
+                </span>
+                <input
+                  type="search"
+                  value={stackQuery}
+                  onChange={(e) => {
+                    setStackQuery(e.target.value);
+                    setStackDropdownOpen(true);
+                  }}
+                  onFocus={() => setStackDropdownOpen(true)}
+                  onClick={() => setStackDropdownOpen(true)}
+                  placeholder="기술 이름을 검색하세요"
+                  autoComplete="off"
+                  aria-expanded={stackDropdownOpen}
+                  aria-haspopup="listbox"
+                  className="w-full rounded-2xl border border-zinc-200 bg-zinc-50 py-3 pl-10 pr-10 text-sm text-zinc-900 outline-none transition-colors placeholder:text-zinc-400 focus:border-orange-400 focus:bg-white focus:ring-2 focus:ring-orange-500/20"
+                  aria-label="기술 스택 검색 및 선택"
+                />
+                <ChevronDownIcon
+                  className={`pointer-events-none absolute right-3.5 top-1/2 h-5 w-5 -translate-y-1/2 text-zinc-400 transition-transform ${
+                    stackDropdownOpen ? 'rotate-180' : ''
+                  }`}
+                />
+              </div>
 
-            {stackQuery.trim().length > 0 && (
+              {stackDropdownOpen && (
               <div
                 className="mt-2 overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-sm"
                 role="listbox"
-                aria-label="검색 결과"
+                aria-label={isStackSearching ? '검색 결과' : '기술 스택 선택'}
               >
                 {filteredCatalog.length === 0 ? (
                   <p className="px-4 py-6 text-center text-sm text-zinc-500">검색 결과가 없습니다</p>
@@ -460,7 +498,8 @@ export default function ProfileSetupPage() {
                   {selectedStacks.length} / {MAX_STACK}개 선택됨
                 </div>
               </div>
-            )}
+              )}
+            </div>
           </div>
 
           <button
