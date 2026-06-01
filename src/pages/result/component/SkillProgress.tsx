@@ -1,16 +1,16 @@
 import { motion } from 'framer-motion';
 import type { Skill } from '../type';
 
-function ProgressRow({ 
+function ProgressRow({
   skill, isHovered, isDimmed, isBonus, bonusAmount, displayScore, setHoveredSkill
-}: { 
-  skill: Skill, isHovered: boolean, isDimmed: boolean, isBonus: boolean, bonusAmount: number, displayScore: number, setHoveredSkill: (name: string | null) => void 
+}: {
+  skill: Skill, isHovered: boolean, isDimmed: boolean, isBonus: boolean, bonusAmount: number, displayScore: number, setHoveredSkill: (name: string | null) => void
 }) {
-  const isMet = skill.score >= skill.required_score;
+  const isMet = skill.score > skill.required_score;
   const baseColor = isMet ? "bg-emerald-500" : "bg-orange-500";
   const textColor = isMet ? "text-emerald-500" : "text-orange-500";
   return (
-    <div 
+    <div
       className={`flex items-center text-sm transition-all duration-150 ${isDimmed ? "opacity-30" : "opacity-100"}`}
       onMouseEnter={() => setHoveredSkill(skill.name)}
       onMouseLeave={() => setHoveredSkill(null)}
@@ -22,13 +22,14 @@ function ProgressRow({
       <div className="flex-1 h-4 rounded-md mx-4 relative bg-zinc-100 border border-zinc-200 overflow-hidden cursor-pointer">
 
         {skill.required_score > skill.score && (
-          <div 
+          <div
             style={{ left: `${skill.score}%`, width: `${skill.required_score - skill.score}%` }}
             className="absolute top-0 h-full bg-zinc-300 z-0"
           />
         )}
 
-        <motion.div 
+        {/* 보유 점수 막대 */}
+        <motion.div
           initial={{ width: `0%` }}
           animate={{ width: `${skill.score}%` }}
           transition={{ duration: 0.2, ease: "easeOut" }}
@@ -36,7 +37,7 @@ function ProgressRow({
         />
 
         {isBonus && bonusAmount > 0 && (
-          <motion.div 
+          <motion.div
             initial={{ width: 0 }}
             animate={{ width: `${bonusAmount}%` }}
             style={{ left: `${skill.score}%` }}
@@ -44,10 +45,10 @@ function ProgressRow({
           />
         )}
 
-        {skill.score > 0 && skill.required_score > 0 && (
-          <div 
-            style={{ left: 0, width: `${skill.required_score}%` }}
-            className="absolute top-0 h-full border-r-2 border-dashed border-zinc-600/70 z-30 pointer-events-none"
+        {skill.required_score > 0 && skill.score > skill.required_score && (
+          <div
+            style={{ left: `${Math.min(skill.required_score, 99.5)}%` }}
+            className="absolute top-0 h-full border-l-2 border-dashed border-zinc-600/70 z-30 pointer-events-none"
           />
         )}
       </div>
@@ -77,16 +78,16 @@ export default function SkillProgress({ skills, hoveredSkill, setHoveredSkill, h
       <div className="flex flex-col gap-5">
         {skills.map((skill) => {
           const isBonus = hoveredPlanData?.skill === skill.name;
-          const bonusAmount = isBonus ? hoveredPlanData.amount : 0; 
-          
+          const bonusAmount = isBonus ? hoveredPlanData.amount : 0;
+
           const displayScore = Math.min(100, skill.score + bonusAmount);
-          
+
           const isHovered = hoveredSkill === skill.name || isBonus;
-          const isDimmed = (hoveredSkill !== null && hoveredSkill !== skill.name) || 
+          const isDimmed = (hoveredSkill !== null && hoveredSkill !== skill.name) ||
                            (hoveredPlanData !== null && !isBonus);
 
           return (
-            <ProgressRow 
+            <ProgressRow
               key={`${skill.name}-${skill.isLacking ? 'lack' : 'own'}`}
               skill={skill}
               isHovered={isHovered}

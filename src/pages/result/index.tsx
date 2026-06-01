@@ -43,7 +43,7 @@ export default function ResultPage() {
               color: "",
               isLacking: false,
               gap: 0,
-              required_score: s.required_score || s.score || 0
+              required_score: s.required_score ?? 0,
             });
           });
 
