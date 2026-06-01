@@ -5,16 +5,20 @@ const gemini = axios.create({
   headers: { 'Content-Type': 'application/json' },
 });
 
+// 무료 한도가 더 넉넉한 lite 사용 (flash: 250 RPD / lite: 1000 RPD)
+const MODEL = 'gemini-2.5-flash-lite';
+
 export interface ScheduleItem {
   scheduleId: number;
   date: string;
   topic: string;
   description: string;
-  links: { type: 'youtube' | 'blog'; url: string; title: string }[];
+  checklist: string[];
+  quiz?: { question: string; answer: string };
 }
 
-// ── 학습 도메인용: 검색 + 링크 포함 ──────────────────
-const SYSTEM_WITH_LINKS = `You are a study-schedule generator for a coding/learning study group.
+// ── 학습 도메인용: 토픽 + 체크리스트 + 퀴즈 (링크 없음) ──────────
+const SYSTEM_STUDY = `You are a study-schedule generator for a coding/learning study group.
 
 INPUT (JSON):
 - members: learners with skill levels, e.g. { "kotlin": 90, "algorithm": 30 }
@@ -22,7 +26,7 @@ INPUT (JSON):
 - domain: the skill area to grow (Korean, e.g. "알고리즘")
 - schedule: a PRE-COMPUTED array of { scheduleId, date }. These dates are FIXED.
 
-TASK: For EACH item in "schedule", fill in topic, description, and links.
+TASK: For EACH item in "schedule", fill in topic, description, checklist, and quiz.
 
 CURRICULUM RULES:
 - Derive topics and their ORDER from the roadmap.sh learning path for "domain".
@@ -32,14 +36,10 @@ CURRICULUM RULES:
 - Spread topics across the given dates in increasing difficulty.
 - Calibrate difficulty/pace to "members": skip what they already know, focus on "domain".
 
-LINK RULES (IMPORTANT — use Google Search):
-- Use Google Search to find REAL, CURRENTLY-LIVE URLs for each day's topic.
-- Every URL must be one you actually found via search. Do NOT invent or guess URLs.
-- Never output a truncated URL (no "…", no "..."). Output the full, complete URL.
-- For youtube links, use a real watch URL (https://www.youtube.com/watch?v=...).
-- Prefer stable sources: official docs, GeeksforGeeks, MDN, well-known YouTube channels.
-- 1-3 links per day. type MUST be "youtube" or "blog". Each link MUST include a "title".
-- NEVER output roadmap.sh links.
+CONTENT RULES (NO LINKS — never output any URL or external resource):
+- checklist: 2-3 short bullet points of the KEY things learned that day (Korean, each one concise line).
+- quiz: ONE short question reviewing that day's topic, with a concise answer (Korean).
+- Do NOT include any links, URLs, or resource references anywhere in the output.
 
 OUTPUT RULES:
 - Keep scheduleId and date EXACTLY as given. Never add, remove, or reorder dates.
@@ -47,28 +47,31 @@ OUTPUT RULES:
   (what they learn + one small hands-on task).
 - Return ONLY JSON in EXACTLY this shape. The top-level array MUST be named "items"
   (the INPUT array is "schedule", but your OUTPUT array is "items"):
-  {"items":[{"scheduleId":1,"date":"YYYY-MM-DD","topic":"...","description":"...","links":[{"type":"youtube|blog","url":"...","title":"..."}]}]}
+  {"items":[{"scheduleId":1,"date":"YYYY-MM-DD","topic":"...","description":"...","checklist":["...","..."],"quiz":{"question":"...","answer":"..."}}]}
 - No markdown, no commentary.`;
 
-// ── 비학습 활동용: 검색/링크 없음, 준비 일정만 ──────────
-const SYSTEM_NO_LINKS = `You are an activity-preparation schedule generator.
+// ── 비학습 활동용: 준비 일정 + 체크리스트 + 퀴즈 (링크 없음) ──────────
+const SYSTEM_PREP = `You are an activity-preparation schedule generator.
 
 INPUT (JSON):
-- activity: the activity the user is preparing for (Korean; e.g. 공모전/대외활동/지원 프로그램)
+- activity: the activity the user is preparing for (Korean; 공모전/대외활동/지원 프로그램 등)
 - schedule: a PRE-COMPUTED array of { scheduleId, date }. These dates are FIXED.
 
-TASK: For EACH item in "schedule", fill in topic and description ONLY. Do NOT output links.
+TASK: For EACH item in "schedule", fill in topic, description, checklist, and quiz.
 
 RULES:
 - Build a realistic step-by-step PREPARATION plan for the given "activity"
-  (e.g. 요구사항/공고 분석 -> 필요 서류 정리 -> 초안 작성 -> 피드백/보완 -> 최종 검토 -> 제출).
+  (요구사항/공고 분석 -> 필요 서류 정리 -> 초안 작성 -> 피드백/보완 -> 최종 검토 -> 제출).
 - Spread the steps across the given dates in a sensible order, ending near the deadline.
+- checklist: 2-3 short action points for that day (Korean, each one concise line).
+- quiz: ONE short self-check question for that day, with a concise answer (Korean).
+- Do NOT include any links or URLs anywhere.
 - Keep scheduleId and date EXACTLY as given. Never add, remove, or reorder dates.
 - Write topic and description in KOREAN. description: 2-3 concrete sentences
   (what to do that day + one small actionable task).
 - Return ONLY JSON in EXACTLY this shape. The top-level array MUST be named "items"
   (the INPUT array is "schedule", but your OUTPUT array is "items"):
-  {"items":[{"scheduleId":1,"date":"YYYY-MM-DD","topic":"...","description":"..."}]}
+  {"items":[{"scheduleId":1,"date":"YYYY-MM-DD","topic":"...","description":"...","checklist":["..."],"quiz":{"question":"...","answer":"..."}}]}
 - No markdown, no commentary.`;
 
 // 로컬(KST) 기준 YYYY-MM-DD
@@ -87,12 +90,40 @@ function extractJson(text: string): { items: ScheduleItem[] } {
   return { items };
 }
 
+// 429(한도 초과) 시 잠깐 기다렸다 재시도
+async function postWithRetry(
+  body: unknown,
+  apiKey: string,
+  retries = 2,
+): Promise<{ data: unknown }> {
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    try {
+      return await gemini.post(`/models/${MODEL}:generateContent`, body, {
+        headers: { 'x-goog-api-key': apiKey },
+      });
+    } catch (e: unknown) {
+      const status =
+        e && typeof e === 'object' && 'response' in e
+          ? (e as { response?: { status?: number } }).response?.status
+          : undefined;
+      if (status === 429 && attempt < retries) {
+        const wait = 3000 * (attempt + 1); // 3s, 6s
+        console.warn(`[Gemini] 429 한도 초과 — ${wait}ms 후 재시도 (${attempt + 1}/${retries})`);
+        await new Promise((r) => setTimeout(r, wait));
+        continue;
+      }
+      throw e;
+    }
+  }
+  throw new Error('요청 재시도 실패');
+}
+
 export async function generateStudySchedule(p: {
   members: unknown;
   activity: string;
   domain: string;
   endDate: string;
-  withLinks: boolean;   // 학습 도메인이면 true(검색+링크), 비학습이면 false
+  withLinks: boolean;  // 학습 도메인이면 true(STUDY), 비학습이면 false(PREP)
 }): Promise<ScheduleItem[]> {
   const apiKey = import.meta.env.VITE_GEMINI;
   if (!apiKey) {
@@ -112,39 +143,33 @@ export async function generateStudySchedule(p: {
     throw new Error('endDate가 오늘보다 이전입니다. 날짜를 확인하세요.');
   }
 
-  const body: Record<string, unknown> = {
-    system_instruction: {
-      parts: [{ text: p.withLinks ? SYSTEM_WITH_LINKS : SYSTEM_NO_LINKS }],
-    },
+  const body = {
+    system_instruction: { parts: [{ text: p.withLinks ? SYSTEM_STUDY : SYSTEM_PREP }] },
     contents: [{
       role: 'user',
       parts: [{ text: JSON.stringify(
         p.withLinks
           ? { members: p.members, activity: p.activity, domain: p.domain, schedule }
-          : { activity: p.activity, schedule }, // 비학습: domain/members 불필요
+          : { activity: p.activity, schedule },
       ) }],
     }],
     generationConfig: { temperature: 0.3 },
   };
-  // 학습 도메인일 때만 검색(grounding) 사용
-  if (p.withLinks) {
-    body.tools = [{ google_search: {} }];
-  }
 
-  const res = await gemini.post(
-    '/models/gemini-2.5-flash:generateContent',
-    body,
-    { headers: { 'x-goog-api-key': apiKey } },
-  );
+  const res = await postWithRetry(body, apiKey);
 
-  const parts = res.data?.candidates?.[0]?.content?.parts as { text?: string }[] | undefined;
+  const parts = (res.data as {
+    candidates?: { content?: { parts?: { text?: string }[] } }[];
+  })?.candidates?.[0]?.content?.parts;
   const text = parts?.map((pt) => pt.text ?? '').join('') ?? '';
+
   if (!text) {
     console.error('[Gemini] 빈 응답:', JSON.stringify(res.data, null, 2));
     throw new Error('Gemini 응답에서 텍스트를 찾지 못했습니다.');
   }
 
-  const items = extractJson(text).items;
-  // 비학습 모드는 링크 없음 → 빈 배열 보장
-  return items.map((it) => ({ ...it, links: p.withLinks ? (it.links ?? []) : [] }));
+  return extractJson(text).items.map((it) => ({
+    ...it,
+    checklist: Array.isArray(it.checklist) ? it.checklist.slice(0, 3) : [],
+  }));
 }

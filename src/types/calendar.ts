@@ -50,10 +50,16 @@ export interface StudyLink {
   title: string;
 }
 
+export interface StudyQuiz {
+  question: string;
+  answer: string;
+}
+
 export interface StudySchedule {
   scheduleId: number;
   date: string;
   topic: string;
   description: string;
-  links: StudyLink[];
+  checklist: string[];   // 오늘 학습 핵심 2~3개
+  quiz?: StudyQuiz;       // 마지막 퀴즈 1개
 }
