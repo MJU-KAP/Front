@@ -2,7 +2,7 @@ import type { ReactNode } from 'react';
 import NextPlanLogo from '../brand/NextPlanLogo';
 
 type AppHeaderProps = {
-  /** 가운데 NAV (메인 페이지 등에서만 사용) */
+  /** 가운데 NAV (대외활동·공모전 등) */
   centerSlot?: ReactNode;
   /** 페이지별 오른쪽 액션 (예: KakaoLoginButton) */
   rightSlot?: ReactNode;
