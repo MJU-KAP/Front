@@ -1,4 +1,5 @@
 import { useMemo } from "react";
+import { motion } from "framer-motion";
 import type { SkillCanvasProps, SkillChunk } from "../type";
 
 export default function SkillCanvas({ skills = [], hoveredSkill, setHoveredSkill, hoveredPlanData }: SkillCanvasProps) {
@@ -75,7 +76,6 @@ export default function SkillCanvas({ skills = [], hoveredSkill, setHoveredSkill
       }
     });
 
-    // 라벨: 스킬당 1개 (색 있으면 색, 없으면 점선)
     skills?.forEach(skill => {
       const colored = result.filter(c => c.originalSkill === skill.name && !c.isLacking);
       const group = colored.length > 0
@@ -98,12 +98,23 @@ export default function SkillCanvas({ skills = [], hoveredSkill, setHoveredSkill
   }, [skills, hoveredSkill, hoveredPlanData]);
 
   if (!skills || skills.length === 0) {
-    return <div className="bg-zinc-900 rounded-3xl p-6 shadow-lg border border-zinc-800 w-full h-32 flex items-center justify-center text-zinc-500">결과를 불러오는 중입니다...</div>;
+    return (
+      <div className="bg-zinc-900 rounded-3xl p-6 shadow-lg border border-zinc-800 w-full h-32 flex items-center justify-center text-zinc-500">
+        <motion.div animate={{ opacity: [0.4, 1, 0.4] }} transition={{ duration: 1.5, repeat: Infinity }}>
+          결과를 불러오는 중입니다...
+        </motion.div>
+      </div>
+    );
   }
 
   return (
     <div className="bg-zinc-900 rounded-3xl p-6 shadow-lg border border-zinc-800 w-full overflow-hidden">
-      <div className="flex flex-wrap w-full items-stretch gap-y-3">
+      <motion.div
+        className="flex flex-wrap w-full items-stretch gap-y-3"
+        initial="hidden"
+        animate="show"
+        variants={{ hidden: {}, show: { transition: { staggerChildren: 0.04 } } }}
+      >
         {chunks?.map((chunk) => {
           if (chunk.isDummy) {
             return <div key={chunk.id} style={{ width: `${chunk.take}%` }} className="flex-shrink-0" />;
@@ -118,41 +129,62 @@ export default function SkillCanvas({ skills = [], hoveredSkill, setHoveredSkill
             ? `border-2 border-dashed bg-transparent text-zinc-400 ${chunk.isHovered ? 'border-zinc-300' : 'border-zinc-600'}`
             : `${chunk.baseColor} text-white`;
 
-          // 점선이 색과 붙는 면: 왼쪽 테두리 제거
           const joinLeftBorder = chunk.isLacking && !chunk.isFirstPart ? "border-l-0" : "";
-          // 새 스킬 시작이면 왼쪽 간격
+          // 새 스킬 시작만 왼쪽 간격. 폭을 건드리는 음수 마진은 일절 사용 안 함(밀림 원인 제거)
           const startGap = chunk.isSkillStart ? "pl-3" : "";
+          // 이어지는 조각은 그림자 없음(이음매 음영 방지)
+          const shadowClass = chunk.isHovered
+            ? "shadow-xl shadow-black/50 z-10"
+            : chunk.isSkillStart
+              ? "shadow-sm z-0"
+              : "z-0";
 
           return (
-            <div
+            <motion.div
               key={chunk.id}
+              layout
+              variants={chunk.isLacking ? undefined : {
+                hidden: { opacity: 0, y: 12, scale: 0.96 },
+                show: { opacity: 1, y: 0, scale: 1, transition: { duration: 0.4, ease: "easeOut" } },
+              }}
+              initial={chunk.isLacking ? false : undefined}
               style={{ width: `${chunk.take}%` }}
               className={`box-border flex-shrink-0 ${startGap}`}
               onMouseEnter={() => setHoveredSkill(chunk.originalSkill || null)}
               onMouseLeave={() => setHoveredSkill(null)}
             >
-              <div
-                className={`h-20 flex items-center justify-center font-bold cursor-pointer overflow-hidden px-2 transition duration-150 relative
+              <motion.div
+                layout
+                animate={{ opacity: chunk.isDimmed ? 0.3 : 1 }}
+                transition={{ opacity: { duration: 0.2 }, layout: { duration: 0.3, ease: "easeInOut" } }}
+                className={`h-20 flex items-center justify-center font-bold cursor-pointer overflow-hidden px-2 relative
                   ${boxStyle}
                   ${roundedClass}
                   ${joinLeftBorder}
-                  ${chunk.isHovered ? "brightness-125 shadow-lg shadow-black/40 z-10" : "shadow-sm z-0"}
-                  ${chunk.isDimmed ? "grayscale opacity-30" : "opacity-100"}
+                  ${shadowClass}
                 `}
               >
                 {chunk.isLongestPart && (
-                  <div className="truncate flex items-center gap-1">
+                  <motion.div className="truncate flex items-center gap-1 relative z-10">
                     <span>{chunk.name}</span>
                     {chunk.isBonus && (chunk.bonusAmount ?? 0) > 0 && (
-                      <span className="text-xs font-black opacity-90">(+{chunk.bonusAmount}%)</span>
+                      <motion.span
+                        key={chunk.bonusAmount}
+                        initial={{ scale: 0.4, opacity: 0 }}
+                        animate={{ scale: 1, opacity: 0.9 }}
+                        transition={{ type: "spring", stiffness: 400, damping: 15 }}
+                        className="text-xs font-black"
+                      >
+                        (+{chunk.bonusAmount}%)
+                      </motion.span>
                     )}
-                  </div>
+                  </motion.div>
                 )}
-              </div>
-            </div>
+              </motion.div>
+            </motion.div>
           );
         })}
-      </div>
+      </motion.div>
     </div>
   );
 }
